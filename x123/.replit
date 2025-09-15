@@ -1,0 +1,63 @@
+modules = ["nodejs-20", "web"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+[nix]
+channel = "stable-25_05"
+
+[deployment]
+deploymentTarget = "autoscale"
+build = ["npm", "run", "build"]
+run = ["npm", "run", "start"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 36767
+externalPort = 3000
+
+[[ports]]
+localPort = 43189
+externalPort = 3001
+
+[env]
+PORT = "5000"
+
+[agent]
+integrations = ["javascript_mem_db:1.0.0"]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "ss"
+mode = "sequential"
+author = 47344677
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "# 🛠 Replit Git Recovery Script  echo \"🔎 Checking Git status...\" git status || echo \"⚠️ Git status failed\"  echo \"🧹 Checking repository health...\" git fsck --full || echo \"⚠️ Git fsck reported issues\"  echo \"🧹 Running garbage collection...\" git gc --prune=now || echo \"⚠️ Git gc failed\"  echo \"🔄 Verifying HEAD pointer...\" if [ ! -s .git/HEAD ]; then   echo \"⚠️ HEAD is broken, resetting to main branch...\"   echo \"ref: refs/heads/main\" > .git/HEAD fi  echo \"📥 Fetching from remote (if exists)...\" git fetch origin || echo \"⚠️ No remote or fetch failed\"  echo \"📥 Pulling latest changes...\" git pull origin main || echo \"⚠️ Could not pull (maybe wrong branch?)\"  echo \"📝 Making a test commit...\" git add . git commit -m \"chore: recover repo state\" || echo \"⚠️ Nothing to commit\"  echo \"🚀 Pushing to remote...\" git push origin main || echo \"⚠️ Push failed (check branch or auth)\"  echo \"✅ Git recovery script finished!\""
