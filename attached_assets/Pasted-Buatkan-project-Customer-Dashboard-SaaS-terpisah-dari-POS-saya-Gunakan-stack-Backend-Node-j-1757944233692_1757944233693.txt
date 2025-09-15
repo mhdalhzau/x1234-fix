@@ -1,0 +1,67 @@
+Buatkan project Customer Dashboard SaaS terpisah dari POS saya. 
+Gunakan stack: 
+- Backend: Node.js + Express + Drizzle ORM + PostgreSQL
+- Frontend: React + Vite + TailwindCSS + TypeScript
+- Auth: JWT + Refresh Token
+
+Spesifikasi Lengkap:
+
+1. Sistem Multi-Tenant:
+   - Tenant (pelanggan bisnis POS saya) dengan status: trial, active, suspended, expired.
+   - Users: owner, manager, staff (role-based access).
+   - Outlets (slot toko per tenant, dibatasi sesuai paket).
+   - Subscriptions (paket langganan: Basic, Pro, Enterprise) dengan masa aktif, auto-renew, expired handling.
+   - Modules (fitur POS yang bisa diaktifkan/nonaktifkan per tenant: POS, stok, laporan, loyalty).
+   - Billing history (riwayat pembayaran: jumlah, metode, status, tanggal).
+
+2. Auth & Security:
+   - Register tenant baru → otomatis buat akun owner.
+   - Login owner/staff dengan JWT (refresh token).
+   - Role-based access control (RBAC).
+   - Aktivasi akun via email/OTP (simulasi cukup pakai console log service).
+
+3. Fitur Tenant:
+   - Owner dapat menambah staff (manager, kasir).
+   - Owner dapat menambah outlet baru, terbatas sesuai paket langganan.
+   - Owner dapat mengatur modul aktif (stok, laporan, loyalty).
+   - Halaman billing: lihat paket aktif, upgrade paket, riwayat pembayaran.
+
+4. Fitur Admin (superadmin):
+   - Lihat semua tenant.
+   - Suspend/aktifkan tenant.
+   - Atur paket langganan default.
+   - Monitoring tenant aktif, trial, expired.
+
+5. Frontend (React + Tailwind + Vite):
+   - Login page
+   - Register page
+   - Dashboard tenant (kelola outlet, staff, modul, billing)
+   - Admin panel (lihat tenant, suspend, monitoring)
+   - Responsive UI dengan komponen reusable (Navbar, Sidebar, Tables, Forms)
+
+6. Struktur Folder:
+   /backend
+     ├── models (Drizzle schema: tenants, users, outlets, subscriptions, modules, billing_history)
+     ├── routes (auth, tenants, outlets, subscriptions, modules, billing)
+     ├── middleware (auth, RBAC)
+     ├── utils (jwt, email service dummy)
+     └── server.ts
+   /frontend
+     ├── pages (login, register, dashboard, billing, admin)
+     ├── components (navbar, sidebar, tables, forms)
+     ├── hooks (auth, useTenant)
+     └── main.tsx
+   drizzle.config.ts
+   .env (DATABASE_URL)
+
+7. Database:
+   - Gunakan PostgreSQL via Drizzle ORM
+   - Table inti: tenants, users, outlets, subscriptions, modules, billing_history
+   - Buat migration agar bisa langsung generate schema.
+
+8. Deployment:
+   - Backend dan frontend bisa jalan terpisah dengan `npm run dev`
+   - Gunakan environment variable DATABASE_URL agar tetap connect ke database POS saya.
+
+Buatkan full skeleton project dengan contoh implementasi minimal 
+(login, register tenant, CRUD outlet, toggle modul, lihat paket subscription).
