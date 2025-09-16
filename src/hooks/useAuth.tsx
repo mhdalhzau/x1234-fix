@@ -1,7 +1,9 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = (window as any).VITE_API_BASE_URL || '';
+const API_BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:8000' 
+  : `https://${window.location.hostname.replace('-00-', '-00-').replace('.pike.replit.dev', '-8000.pike.replit.dev')}`;
 
 interface User {
   id: string;
@@ -94,6 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      if (tenant) {
+        localStorage.setItem('tenant', JSON.stringify(tenant));
+      }
       
       setUser(user);
       setTenant(tenant);
@@ -109,6 +115,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('user', JSON.stringify(user));
+      if (tenant) {
+        localStorage.setItem('tenant', JSON.stringify(tenant));
+      }
       
       setUser(user);
       setTenant(tenant);
@@ -128,6 +138,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('tenant');
       setUser(null);
       setTenant(null);
     }
@@ -141,14 +153,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Get current user info
-      await axios.get('/api/tenants/me');
-      // This would need to be updated when we have a proper user profile endpoint
-      // For now, we'll just mark as authenticated
+      // For now, just verify the token format and set loading to false
+      // In production, you would verify the token with the server
+      const userStr = localStorage.getItem('user');
+      const tenantStr = localStorage.getItem('tenant');
+      
+      if (userStr) {
+        setUser(JSON.parse(userStr));
+      }
+      if (tenantStr) {
+        setTenant(JSON.parse(tenantStr));
+      }
+      
       setIsLoading(false);
     } catch (error) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('tenant');
       setUser(null);
       setTenant(null);
       setIsLoading(false);

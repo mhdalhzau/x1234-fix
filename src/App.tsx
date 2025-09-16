@@ -12,6 +12,27 @@ import OutletsPage from './pages/OutletsPage';
 import BillingPage from './pages/BillingPage';
 import AdminPage from './pages/AdminPage';
 
+// Subscription pages
+import PlansPage from './pages/subscriptions/PlansPage';
+
+// Content pages
+import BlogPage from './pages/content/BlogPage';
+
+// Communication pages
+import EmailTemplatesPage from './pages/communications/EmailTemplatesPage';
+
+// Organization pages
+import TenantsPage from './pages/organizations/TenantsPage';
+
+// Settings pages
+import GeneralSettingsPage from './pages/settings/GeneralSettingsPage';
+
+// Integration pages
+import APIManagementPage from './pages/integrations/APIManagementPage';
+
+// Branding pages
+import ThemeSettingsPage from './pages/branding/ThemeSettingsPage';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -123,6 +144,77 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      
+      {/* Subscription routes */}
+      <Route
+        path="/subscriptions/plans"
+        element={
+          <ProtectedRoute>
+            <PlansPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Content routes */}
+      <Route
+        path="/content/blog"
+        element={
+          <ProtectedRoute>
+            <BlogPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Communication routes */}
+      <Route
+        path="/communications/templates"
+        element={
+          <ProtectedRoute>
+            <EmailTemplatesPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Organization routes */}
+      <Route
+        path="/organizations/tenants"
+        element={
+          <ProtectedRoute>
+            <TenantsPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Settings routes */}
+      <Route
+        path="/settings/general"
+        element={
+          <ProtectedRoute>
+            <GeneralSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Integration routes */}
+      <Route
+        path="/integrations/api"
+        element={
+          <ProtectedRoute>
+            <APIManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Branding routes */}
+      <Route
+        path="/branding/theme"
+        element={
+          <ProtectedRoute>
+            <ThemeSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      
       <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );

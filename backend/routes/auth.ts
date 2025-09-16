@@ -209,8 +209,14 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ message: 'Refresh token expired' });
     }
 
-    // Generate new access token
-    const newAccessToken = generateAccessToken(payload);
+    // Generate new access token with clean payload (remove exp property)
+    const cleanPayload = {
+      userId: payload.userId,
+      tenantId: payload.tenantId,
+      role: payload.role,
+      email: payload.email,
+    };
+    const newAccessToken = generateAccessToken(cleanPayload);
 
     res.json({
       accessToken: newAccessToken,
