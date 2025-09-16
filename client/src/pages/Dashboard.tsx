@@ -10,15 +10,14 @@ import {
 export default function Dashboard() {
   const { currentStore } = useStore();
 
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ["/api/dashboard/stats", currentStore?.id],
-    queryFn: async () => {
-      const response = await fetch("/api/dashboard/stats", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch stats");
-      return response.json();
-    },
+  const { data: stats, isLoading } = useQuery<{
+    todaySales: number;
+    ordersToday: number;
+    totalProducts: number;
+    lowStockCount: number;
+    totalCustomers: number;
+  }>({
+    queryKey: ["/api/dashboard/stats"],
     enabled: !!currentStore,
   });
 

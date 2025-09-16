@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthHeaders } from "@/lib/auth";
+import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/contexts/StoreContext";
 import CustomerModal from "@/components/customers/CustomerModal";
 import { type Customer } from "@shared/schema";
@@ -23,32 +23,21 @@ export default function Customers() {
   const queryClient = useQueryClient();
   const { currentStore } = useStore();
 
-  const { data: customers = [], isLoading } = useQuery({
-    queryKey: ["/api/customers", currentStore?.id],
-    queryFn: async () => {
-      const response = await fetch("/api/customers", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch customers");
-      return response.json();
-    },
+  const { data: customers = [], isLoading } = useQuery<Customer[]>({
+    queryKey: ["/api/customers"],
     enabled: !!currentStore,
   });
 
   const deleteCustomerMutation = useMutation({
     mutationFn: async (customerId: string) => {
-      const response = await fetch(`/api/customers/${customerId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to delete customer");
+      await apiRequest("DELETE", `/api/customers/${customerId}`);
     },
     onSuccess: () => {
       toast({
         title: "Customer deleted",
         description: "Customer has been successfully deleted",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/customers", currentStore?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/customers"] });
     },
     onError: (error) => {
       toast({

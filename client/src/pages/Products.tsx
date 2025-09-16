@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { getAuthHeaders } from "@/lib/auth";
+import { apiRequest } from "@/lib/queryClient";
 import { useStore } from "@/contexts/StoreContext";
 import ProductModal from "@/components/products/ProductModal";
 import { type Product } from "@shared/schema";
@@ -29,44 +29,26 @@ export default function Products() {
   const queryClient = useQueryClient();
   const { currentStore } = useStore();
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["/api/products", currentStore?.id],
-    queryFn: async () => {
-      const response = await fetch("/api/products", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch products");
-      return response.json();
-    },
+  const { data: products = [], isLoading } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
     enabled: !!currentStore,
   });
 
-  const { data: categories = [] } = useQuery({
-    queryKey: ["/api/categories", currentStore?.id],
-    queryFn: async () => {
-      const response = await fetch("/api/categories", {
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to fetch categories");
-      return response.json();
-    },
+  const { data: categories = [] } = useQuery<{ id: string; name: string; description: string | null; storeId: string; }[]>({
+    queryKey: ["/api/categories"],
     enabled: !!currentStore,
   });
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const response = await fetch(`/api/products/${productId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (!response.ok) throw new Error("Failed to delete product");
+      await apiRequest("DELETE", `/api/products/${productId}`);
     },
     onSuccess: () => {
       toast({
         title: "Product deleted",
         description: "Product has been successfully deleted",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/products", currentStore?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
     },
     onError: (error) => {
       toast({
