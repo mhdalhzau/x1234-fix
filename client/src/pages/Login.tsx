@@ -19,6 +19,35 @@ export default function Login() {
     setIsLoading(true);
 
     try {
+      // Check if this is a superadmin login (redirect to customer-dashboard)
+      if (username === "admin@example.com" || username === "superadmin") {
+        // Attempt superadmin login to customer-dashboard
+        const response = await fetch("/api/auth/superadmin-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: "admin@example.com", password }),
+        });
+
+        if (response.ok) {
+          toast({
+            title: "Superadmin login successful",
+            description: "Redirecting to customer dashboard...",
+          });
+          
+          // Redirect to customer-dashboard (adjust URL as needed)
+          setTimeout(() => {
+            window.location.href = "/customer-dashboard";
+          }, 1000);
+          return;
+        } else {
+          const error = await response.json();
+          throw new Error(error.message || "Superadmin login failed");
+        }
+      }
+
+      // Regular POS login
       await login(username, password);
       toast({
         title: "Login successful",

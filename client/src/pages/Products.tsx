@@ -14,7 +14,7 @@ import ProductModal from "@/components/products/ProductModal";
 import { type Product } from "@shared/schema";
 import { 
   Plus, Search, Filter, Edit, Eye, Trash2, Package,
-  Headphones, Smartphone, Laptop, Mouse, Box
+  Headphones, Smartphone, Laptop, Mouse, Box, Tags
 } from "lucide-react";
 
 export default function Products() {
@@ -24,6 +24,7 @@ export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -158,10 +159,20 @@ export default function Products() {
     <main className="p-6 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-foreground">Product Management</h1>
-        <Button onClick={handleAddProduct} data-testid="button-add-product">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setIsCategoryModalOpen(true)} 
+            data-testid="button-manage-categories"
+          >
+            <Tags className="w-4 h-4 mr-2" />
+            Manage Categories
+          </Button>
+          <Button onClick={handleAddProduct} data-testid="button-add-product">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Search */}

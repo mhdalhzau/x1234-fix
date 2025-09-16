@@ -151,6 +151,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(userWithoutPassword);
   });
 
+  // Superadmin login for customer-dashboard
+  app.post("/api/auth/superadmin-login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (email !== "admin@example.com") {
+        return res.status(401).json({ message: "Not a superadmin account" });
+      }
+      
+      // Query cd_users table directly using raw SQL
+      const postgres = require('postgres');
+      const client = postgres(process.env.DATABASE_URL!, { 
+        prepare: false,
+        ssl: process.env.NODE_ENV === 'production' ? 'require' : 'prefer',
+        max: 1
+      });
+      
+      const result = await client`
+        SELECT cu.id, cu.tenant_id, cu.username, cu.email, cu.password_hash, cu.role, cu.is_active,
+               t.business_name, t.status as tenant_status
+        FROM cd_users cu
+        INNER JOIN tenants t ON cu.tenant_id = t.id  
+        WHERE cu.email = ${email} AND cu.is_active = true
+      `;
+      
+      await client.end();
+      
+      if (result.length === 0) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      const user = result[0];
+      
+      // Verify password
+      const isValidPassword = await verifyPassword(password, user.password_hash);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      res.json({
+        message: "Superadmin login successful", 
+        redirectUrl: "/customer-dashboard",
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
+      });
+      
+    } catch (error) {
+      console.error("Superadmin login error:", error);
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
   // Store routes  
   app.get("/api/stores", requireAuth, async (req, res) => {
     try {
@@ -670,6 +726,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(category);
     } catch (error) {
       res.status(400).json({ message: "Invalid category data" });
+    }
+  });
+
+  app.put("/api/categories/:id", requireAuth, requireRole(["administrator", "owner", "administrasi"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const categoryData = insertCategorySchema.partial().parse(req.body);
+      const category = await storage.updateCategory(id, categoryData);
+      
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json(category);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid category data" });
+    }
+  });
+
+  app.delete("/api/categories/:id", requireAuth, requireRole(["administrator", "owner", "administrasi"]), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteCategory(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+      
+      res.json({ message: "Category deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete category" });
     }
   });
 
