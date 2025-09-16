@@ -17,10 +17,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Server"
+args = "POS System"
 
 [[workflows.workflow]]
-name = "Server"
+name = "POS System"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -36,12 +36,12 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 37893
-externalPort = 3001
-
-[[ports]]
 localPort = 40217
 externalPort = 3000
+
+[[ports]]
+localPort = 45945
+externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
