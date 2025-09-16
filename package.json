@@ -8,13 +8,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
+    "@hookform/resolvers": "^3.10.0",
+    "@stripe/react-stripe-js": "^4.0.2",
+    "@stripe/stripe-js": "^7.9.0",
     "axios": "^1.7.7",
     "lucide-react": "^0.453.0",
-    "@hookform/resolvers": "^3.10.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-hook-form": "^7.55.0",
+    "react-router-dom": "^6.28.0",
+    "stripe": "^18.5.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
