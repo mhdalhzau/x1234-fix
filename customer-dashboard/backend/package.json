@@ -11,7 +11,6 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10.4",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -19,6 +18,7 @@
     "drizzle-zod": "^0.8.3",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {

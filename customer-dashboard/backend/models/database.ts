@@ -1,10 +1,11 @@
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from './schema.js';
 
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, { schema });
+// For Supabase connection pooling - disable prepared statements
+const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+export const db = drizzle(client, { schema });
