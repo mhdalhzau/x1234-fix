@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,8 +26,29 @@ const storeFormSchema = z.object({
 });
 
 type StoreFormData = z.infer<typeof storeFormSchema>;
+
+interface QuotaInfo {
+  allowed: boolean;
+  reason?: string;
+  currentCount: number;
+  maxAllowed: number;
+}
+
+interface SubscriptionWithPlan {
+  subscription: {
+    id: string;
+    status: string;
+  };
+  plan: {
+    name: string;
+    maxStores: number;
+    maxUsers: number;
+    features: string[];
+  };
+}
+
 import { apiRequest } from "@/lib/queryClient";
-import { Store as StoreIcon, Plus, Edit, MapPin, Phone, Mail, Building } from "lucide-react";
+import { Store as StoreIcon, Plus, Edit, MapPin, Phone, Mail, Building, AlertTriangle, Crown } from "lucide-react";
 
 export function StoreManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -35,6 +58,14 @@ export function StoreManagement() {
 
   const { data: stores = [], isLoading } = useQuery<Store[]>({
     queryKey: ['/api/stores'],
+  });
+
+  const { data: storeQuota } = useQuery<QuotaInfo>({
+    queryKey: ['/api/quota/stores'],
+  });
+
+  const { data: currentSubscription } = useQuery<SubscriptionWithPlan>({
+    queryKey: ['/api/subscriptions/me'],
   });
 
   const form = useForm<StoreFormData>({
@@ -134,6 +165,16 @@ export function StoreManagement() {
   };
 
   const handleAddNew = () => {
+    // Check if user can create more stores
+    if (storeQuota && !storeQuota.allowed) {
+      toast({
+        title: "Store Limit Reached",
+        description: storeQuota.reason || "You've reached your store limit. Please upgrade your plan to create more stores.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setEditingStore(null);
     form.reset({
       name: "",
@@ -150,8 +191,47 @@ export function StoreManagement() {
     return <div className="flex justify-center p-8">Loading stores...</div>;
   }
 
+  const quotaPercentage = storeQuota ? (storeQuota.currentCount / storeQuota.maxAllowed) * 100 : 0;
+
   return (
     <div className="space-y-6">
+      {/* Subscription Status and Quota */}
+      {currentSubscription && storeQuota && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              Subscription Status
+            </CardTitle>
+            <CardDescription>
+              Current plan: {currentSubscription.plan.name}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Store Usage</span>
+                  <span className="text-sm text-muted-foreground">
+                    {storeQuota.currentCount} / {storeQuota.maxAllowed} stores
+                  </span>
+                </div>
+                <Progress value={quotaPercentage} className="w-full" />
+              </div>
+              
+              {!storeQuota.allowed && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    {storeQuota.reason} Please upgrade your subscription to create more stores.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Store Management</h1>
@@ -161,9 +241,18 @@ export function StoreManagement() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={handleAddNew} data-testid="add-store-button">
+            <Button 
+              onClick={handleAddNew} 
+              data-testid="add-store-button"
+              disabled={storeQuota && !storeQuota.allowed}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Store
+              {storeQuota && !storeQuota.allowed && (
+                <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                  Limit Reached
+                </span>
+              )}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">

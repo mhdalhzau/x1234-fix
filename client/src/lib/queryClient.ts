@@ -24,8 +24,23 @@ export function getCurrentStoreId(): string | null {
   return currentStoreId;
 }
 
-function getStoreHeaders(): Record<string, string> {
+function getStoreHeaders(url?: string): Record<string, string> {
   const headers: Record<string, string> = {};
+  
+  // Skip store headers for these endpoints
+  const exemptEndpoints = [
+    '/api/auth/',
+    '/api/stores',
+    '/api/subscription-plans',
+    '/api/subscriptions',
+    '/api/quota/',
+    '/api/users'
+  ];
+  
+  if (url && exemptEndpoints.some(endpoint => url.includes(endpoint))) {
+    return headers;
+  }
+  
   const storeId = currentStoreId || localStorage.getItem('currentStoreId');
   
   if (!storeId) {
@@ -43,7 +58,7 @@ export async function apiRequest(
 ): Promise<Response> {
   const headers = {
     ...getAuthHeaders(),
-    ...getStoreHeaders(),
+    ...getStoreHeaders(url),
     ...(data ? { "Content-Type": "application/json" } : {}),
   };
 
@@ -64,9 +79,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const queryUrl = queryKey.join("/") as string;
     const headers = {
       ...getAuthHeaders(),
-      ...getStoreHeaders(),
+      ...getStoreHeaders(queryUrl),
     };
 
     const res = await fetch(queryKey.join("/") as string, {
