@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -6,7 +5,6 @@ import {
   CreditCard, 
   Users, 
   Settings, 
-  Building,
   Shield
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
