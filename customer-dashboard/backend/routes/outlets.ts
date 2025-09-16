@@ -8,11 +8,12 @@ import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/au
 const router = Router();
 
 // Get all outlets for tenant
-router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
     const tenantOutlets = await db.select()
       .from(outlets)
-      .where(eq(outlets.tenantId, req.user!.tenantId));
+      .where(eq(outlets.tenantId, authReq.user!.tenantId));
 
     res.json(tenantOutlets);
   } catch (error) {
@@ -22,15 +23,16 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // Get single outlet
-router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const authReq = req as AuthenticatedRequest;
 
     const [outlet] = await db.select()
       .from(outlets)
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, req.user!.tenantId)
+        eq(outlets.tenantId, authReq.user!.tenantId)
       ));
 
     if (!outlet) {
@@ -51,14 +53,15 @@ const createOutletSchema = z.object({
   phone: z.string().optional(),
 });
 
-router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req: AuthenticatedRequest, res) => {
+router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
     const data = createOutletSchema.parse(req.body);
 
     // Check tenant outlet limits
     const [tenant] = await db.select()
       .from(tenants)
-      .where(eq(tenants.id, req.user!.tenantId));
+      .where(eq(tenants.id, authReq.user!.tenantId));
 
     if (!tenant) {
       return res.status(404).json({ message: 'Tenant not found' });
@@ -67,7 +70,7 @@ router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req: Aut
     // Check current outlet count
     const currentOutlets = await db.select()
       .from(outlets)
-      .where(eq(outlets.tenantId, req.user!.tenantId));
+      .where(eq(outlets.tenantId, authReq.user!.tenantId));
 
     if (currentOutlets.length >= tenant.maxOutlets) {
       return res.status(400).json({ 
@@ -77,11 +80,11 @@ router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req: Aut
 
     // Create outlet
     const [newOutlet] = await db.insert(outlets).values({
-      tenantId: req.user!.tenantId,
+      tenantId: authReq.user!.tenantId,
       name: data.name,
       address: data.address,
       phone: data.phone,
-      createdBy: req.user!.userId,
+      createdBy: authReq.user!.userId,
     }).returning();
 
     res.status(201).json(newOutlet);
@@ -102,9 +105,10 @@ const updateOutletSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req: AuthenticatedRequest, res) => {
+router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
+    const authReq = req as AuthenticatedRequest;
     const data = updateOutletSchema.parse(req.body);
 
     const [updatedOutlet] = await db.update(outlets)
@@ -114,7 +118,7 @@ router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req: A
       })
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, req.user!.tenantId)
+        eq(outlets.tenantId, authReq.user!.tenantId)
       ))
       .returning();
 
@@ -133,14 +137,15 @@ router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req: A
 });
 
 // Delete outlet (owner only)
-router.delete('/:id', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.delete('/:id', requireAuth, requireRole(['owner']), async (req, res) => {
   try {
     const { id } = req.params;
+    const authReq = req as AuthenticatedRequest;
 
     const deletedOutlet = await db.delete(outlets)
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, req.user!.tenantId)
+        eq(outlets.tenantId, authReq.user!.tenantId)
       ))
       .returning();
 

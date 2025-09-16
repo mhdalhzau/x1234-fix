@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { tenants, users, outlets, subscriptions, modules, tenantModules } from '../models/schema.js';
@@ -8,11 +8,12 @@ import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/au
 const router = Router();
 
 // Get current tenant info
-router.get('/me', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/me', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const [tenant] = await db.select()
       .from(tenants)
-      .where(eq(tenants.id, req.user!.tenantId));
+      .where(eq(tenants.id, authReq.user!.tenantId));
 
     if (!tenant) {
       return res.status(404).json({ message: 'Tenant not found' });
@@ -42,7 +43,8 @@ const updateTenantSchema = z.object({
   address: z.string().optional(),
 });
 
-router.put('/me', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.put('/me', requireAuth, requireRole(['owner']), async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const data = updateTenantSchema.parse(req.body);
 
@@ -51,7 +53,7 @@ router.put('/me', requireAuth, requireRole(['owner']), async (req: Authenticated
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(tenants.id, req.user!.tenantId))
+      .where(eq(tenants.id, authReq.user!.tenantId))
       .returning();
 
     res.json(updatedTenant);
@@ -65,7 +67,8 @@ router.put('/me', requireAuth, requireRole(['owner']), async (req: Authenticated
 });
 
 // Get tenant modules
-router.get('/modules', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/modules', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const tenantModulesList = await db.select({
       module: modules,
@@ -73,7 +76,7 @@ router.get('/modules', requireAuth, async (req: AuthenticatedRequest, res) => {
     })
     .from(modules)
     .leftJoin(tenantModules, eq(modules.id, tenantModules.moduleId))
-    .where(eq(tenantModules.tenantId, req.user!.tenantId));
+    .where(eq(tenantModules.tenantId, authReq.user!.tenantId));
 
     res.json(tenantModulesList);
   } catch (error) {
@@ -88,7 +91,8 @@ const toggleModuleSchema = z.object({
   isEnabled: z.boolean(),
 });
 
-router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const data = toggleModuleSchema.parse(req.body);
 
@@ -101,24 +105,28 @@ router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req: 
     // Update or insert tenant module
     const existingTenantModule = await db.select()
       .from(tenantModules)
-      .where(eq(tenantModules.tenantId, req.user!.tenantId))
-      .where(eq(tenantModules.moduleId, data.moduleId));
+      .where(and(
+        eq(tenantModules.tenantId, authReq.user!.tenantId),
+        eq(tenantModules.moduleId, data.moduleId)
+      ));
 
     if (existingTenantModule.length > 0) {
       await db.update(tenantModules)
         .set({
           isEnabled: data.isEnabled,
           enabledAt: new Date(),
-          enabledBy: req.user!.userId,
+          enabledBy: authReq.user!.userId,
         })
-        .where(eq(tenantModules.tenantId, req.user!.tenantId))
-        .where(eq(tenantModules.moduleId, data.moduleId));
+        .where(and(
+          eq(tenantModules.tenantId, authReq.user!.tenantId),
+          eq(tenantModules.moduleId, data.moduleId)
+        ));
     } else {
       await db.insert(tenantModules).values({
-        tenantId: req.user!.tenantId,
+        tenantId: authReq.user!.tenantId,
         moduleId: data.moduleId,
         isEnabled: data.isEnabled,
-        enabledBy: req.user!.userId,
+        enabledBy: authReq.user!.userId,
       });
     }
 
@@ -133,10 +141,11 @@ router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req: 
 });
 
 // Admin routes - get all tenants (superadmin only)
-router.get('/admin/all', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/admin/all', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     // For now, only allow if user email is admin@example.com (superadmin)
-    if (req.user!.email !== 'admin@example.com') {
+    if (authReq.user!.email !== 'admin@example.com') {
       return res.status(403).json({ message: 'Superadmin access required' });
     }
 
@@ -156,10 +165,11 @@ const updateTenantStatusSchema = z.object({
   status: z.enum(['trial', 'active', 'suspended', 'expired']),
 });
 
-router.put('/admin/:tenantId/status', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.put('/admin/:tenantId/status', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     // For now, only allow if user email is admin@example.com (superadmin)
-    if (req.user!.email !== 'admin@example.com') {
+    if (authReq.user!.email !== 'admin@example.com') {
       return res.status(403).json({ message: 'Superadmin access required' });
     }
 

@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import postgres from "postgres";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./utils/password";
 import { 
@@ -161,7 +162,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Query cd_users table directly using raw SQL
-      const postgres = require('postgres');
       const client = postgres(process.env.DATABASE_URL!, { 
         prepare: false,
         ssl: process.env.NODE_ENV === 'production' ? 'require' : 'prefer',

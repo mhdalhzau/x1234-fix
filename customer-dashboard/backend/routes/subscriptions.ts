@@ -8,7 +8,8 @@ import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/au
 const router = Router();
 
 // Get current subscription
-router.get('/current', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/current', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const [currentSubscription] = await db.select({
       subscription: subscriptions,
@@ -16,7 +17,7 @@ router.get('/current', requireAuth, async (req: AuthenticatedRequest, res) => {
     })
     .from(subscriptions)
     .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .where(eq(subscriptions.tenantId, req.user!.tenantId))
+    .where(eq(subscriptions.tenantId, authReq.user!.tenantId))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
 
@@ -32,7 +33,8 @@ router.get('/current', requireAuth, async (req: AuthenticatedRequest, res) => {
 });
 
 // Get available subscription plans
-router.get('/plans', requireAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/plans', requireAuth, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const plans = await db.select()
       .from(subscriptionPlans)
@@ -50,7 +52,8 @@ const subscribeSchema = z.object({
   planId: z.string().uuid(),
 });
 
-router.post('/subscribe', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.post('/subscribe', requireAuth, requireRole(['owner']), async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const data = subscribeSchema.parse(req.body);
 
@@ -66,11 +69,11 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req: Authe
     // Cancel any existing active subscription
     await db.update(subscriptions)
       .set({ status: 'cancelled', updatedAt: new Date() })
-      .where(eq(subscriptions.tenantId, req.user!.tenantId));
+      .where(eq(subscriptions.tenantId, authReq.user!.tenantId));
 
     // Create new subscription
     const [newSubscription] = await db.insert(subscriptions).values({
-      tenantId: req.user!.tenantId,
+      tenantId: authReq.user!.tenantId,
       planId: data.planId,
       status: 'active',
       startDate: new Date(),
@@ -86,11 +89,11 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req: Authe
         status: 'active',
         updatedAt: new Date(),
       })
-      .where(eq(tenants.id, req.user!.tenantId));
+      .where(eq(tenants.id, authReq.user!.tenantId));
 
     // Create billing entry
     await db.insert(billingHistory).values({
-      tenantId: req.user!.tenantId,
+      tenantId: authReq.user!.tenantId,
       subscriptionId: newSubscription.id,
       amount: plan.price,
       currency: plan.currency,
@@ -113,11 +116,12 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req: Authe
 });
 
 // Get billing history
-router.get('/billing', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.get('/billing', requireAuth, requireRole(['owner']), async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const billing = await db.select()
       .from(billingHistory)
-      .where(eq(billingHistory.tenantId, req.user!.tenantId))
+      .where(eq(billingHistory.tenantId, authReq.user!.tenantId))
       .orderBy(desc(billingHistory.createdAt));
 
     res.json(billing);
@@ -134,7 +138,8 @@ const updatePaymentSchema = z.object({
   paymentMethod: z.string().optional(),
 });
 
-router.post('/billing/update-payment', requireAuth, requireRole(['owner']), async (req: AuthenticatedRequest, res) => {
+router.post('/billing/update-payment', requireAuth, requireRole(['owner']), async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   try {
     const data = updatePaymentSchema.parse(req.body);
 
