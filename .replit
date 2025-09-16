@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16"]
+modules = ["nodejs-20", "web"]
 [agent]
 expertMode = true
 integrations = ["javascript_supabase:1.0.0"]
@@ -23,25 +23,25 @@ args = "Server"
 name = "Server"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 36915
-externalPort = 3001
-
-[[ports]]
 localPort = 40217
 externalPort = 3000
+
+[[ports]]
+localPort = 45787
+externalPort = 3001
 
 [deployment]
 deploymentTarget = "autoscale"
