@@ -31,14 +31,21 @@ export default function Login() {
         });
 
         if (response.ok) {
+          const data = await response.json();
+          
+          // If superadmin login provides a token, use regular login flow
+          if (data.token) {
+            localStorage.setItem("starpos_token", data.token);
+          }
+          
           toast({
             title: "Superadmin login successful",
-            description: "Redirecting to customer dashboard...",
+            description: "Redirecting to dashboard...",
           });
           
-          // Redirect to customer-dashboard (adjust URL as needed)
+          // Redirect to admin page for superadmin
           setTimeout(() => {
-            window.location.href = "/customer-dashboard";
+            window.location.href = "/admin";
           }, 1000);
           return;
         } else {

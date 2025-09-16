@@ -17,18 +17,17 @@ export const tenants = pgTable("tenants", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
-// Users table - people within tenants
+// Users table - people within tenants  
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
-  username: varchar("username", { length: 100 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  role: text("role", { enum: ["owner", "manager", "staff"] }).notNull().default("staff"),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  username: text("username").notNull(),
+  password: text("password").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email").notNull().unique(),
+  role: text("role").notNull(),
+  storeId: varchar("store_id"),
   isActive: boolean("is_active").notNull().default(true),
-  lastLoginAt: timestamp("last_login_at"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
-  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Outlets table - stores/locations per tenant
@@ -118,7 +117,7 @@ export const refreshTokens = pgTable("refresh_tokens", {
 
 // Insert schemas for validation
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ id: true });
 export const insertOutletSchema = createInsertSchema(outlets).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBillingHistorySchema = createInsertSchema(billingHistory).omit({ id: true, createdAt: true });

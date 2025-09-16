@@ -10,7 +10,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
 export interface JwtPayload {
   userId: string;
-  tenantId: string;
+  tenantId: string | null;
   role: string;
   email: string;
 }
