@@ -16,8 +16,8 @@ import {
   stores, users, categories, suppliers, customers, products, sales, saleItems, inventoryMovements, cashFlowCategories, cashFlowEntries, subscriptionPlans, userSubscriptions, subscriptionPayments
 } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { eq, and, gte, lte, sql, desc, asc } from 'drizzle-orm';
 import { hashPassword } from './utils/password';
 
@@ -164,8 +164,9 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
 }
 
-const neonClient = neon(process.env.DATABASE_URL);
-const db = drizzle(neonClient, {
+// For Supabase connection pooling - disable prepared statements
+const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+const db = drizzle(client, {
   schema: {
     stores,
     users,
