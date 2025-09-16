@@ -12,9 +12,13 @@ import {
   type CashFlowEntry, type InsertCashFlowEntry,
   type SubscriptionPlan, type InsertSubscriptionPlan,
   type UserSubscription, type InsertUserSubscription,
-  type SubscriptionPayment, type InsertSubscriptionPayment
+  type SubscriptionPayment, type InsertSubscriptionPayment,
+  stores, users, categories, suppliers, customers, products, sales, saleItems, inventoryMovements, cashFlowCategories, cashFlowEntries, subscriptionPlans, userSubscriptions, subscriptionPayments
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { drizzle } from 'drizzle-orm/neon-http';
+import { neon } from '@neondatabase/serverless';
+import { eq, and, gte, lte, sql, desc, asc } from 'drizzle-orm';
 
 export interface IStorage {
   // Stores
@@ -154,114 +158,71 @@ export interface IStorage {
   canCreateUser(ownerId: string): Promise<{ allowed: boolean; reason?: string; currentCount: number; maxAllowed: number }>;
 }
 
-export class MemStorage implements IStorage {
-  private stores: Map<string, Store> = new Map();
-  private users: Map<string, User> = new Map();
-  private categories: Map<string, Category> = new Map();
-  private suppliers: Map<string, Supplier> = new Map();
-  private customers: Map<string, Customer> = new Map();
-  private products: Map<string, Product> = new Map();
-  private sales: Map<string, Sale> = new Map();
-  private saleItems: Map<string, SaleItem[]> = new Map();
-  private inventoryMovements: Map<string, InventoryMovement[]> = new Map();
-  private cashFlowCategories: Map<string, CashFlowCategory> = new Map();
-  private cashFlowEntries: CashFlowEntry[] = [];
-  private subscriptionPlans: Map<string, SubscriptionPlan> = new Map();
-  private userSubscriptions: Map<string, UserSubscription> = new Map();
-  private subscriptionPayments: Map<string, SubscriptionPayment> = new Map();
+// Database connection setup
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required');
+}
 
+const neonClient = neon(process.env.DATABASE_URL);
+const db = drizzle(neonClient, {
+  schema: {
+    stores,
+    users,
+    categories,
+    suppliers,
+    customers,
+    products,
+    sales,
+    saleItems,
+    inventoryMovements,
+    cashFlowCategories,
+    cashFlowEntries,
+    subscriptionPlans,
+    userSubscriptions,
+    subscriptionPayments
+  }
+});
+
+export class PostgresStorage implements IStorage {
   constructor() {
-    this.initializeData();
+    // Database storage doesn't need initialization like in-memory
+    // Data will be loaded from the database as needed
   }
 
-  private initializeData() {
-    // Create default administrator user first (will be the owner)
-    const adminId = randomUUID();
-    this.users.set(adminId, {
-      id: adminId,
-      username: "admin",
-      password: "admin123", // In production, this should be hashed
-      firstName: "Administrator",
-      lastName: "SuperAdmin",
-      email: "admin@starpos.com",
-      role: "administrator",
-      storeId: null, // Will be set after store creation
-      isActive: true,
-    });
+  // Stores
+  async getStore(id: string): Promise<Store | undefined> {
+    const result = await db.select().from(stores).where(eq(stores.id, id)).limit(1);
+    return result[0];
+  }
 
-    // Create default store with admin as owner
-    const defaultStoreId = randomUUID();
-    this.stores.set(defaultStoreId, {
-      id: defaultStoreId,
-      name: "Main Store",
-      address: "123 Main Street",
-      phone: "+62-123-456-7890",
-      email: "main@starpos.com",
-      description: "Main store location",
-      ownerId: adminId, // Admin owns the default store
-      isActive: true,
-      createdAt: new Date(),
-    });
+  async createStore(insertStore: InsertStore): Promise<Store> {
+    const [store] = await db.insert(stores).values({
+      ...insertStore,
+      isActive: insertStore.isActive ?? true
+    }).returning();
+    
+    // Create default cash flow categories for the new store
+    await this.createDefaultCashFlowCategories(store.id);
+    
+    return store;
+  }
 
-    // Update admin to work at the default store
-    const admin = this.users.get(adminId)!;
-    this.users.set(adminId, { ...admin, storeId: defaultStoreId });
+  async updateStore(id: string, storeData: Partial<InsertStore>): Promise<Store | undefined> {
+    const result = await db.update(stores).set(storeData).where(eq(stores.id, id)).returning();
+    return result[0];
+  }
 
-    // Create sample categories
-    const electronicsId = randomUUID();
-    this.categories.set(electronicsId, {
-      id: electronicsId,
-      name: "Electronics",
-      description: "Electronic devices and accessories",
-      storeId: defaultStoreId,
-    });
+  async deleteStore(id: string): Promise<boolean> {
+    const result = await db.delete(stores).where(eq(stores.id, id)).returning();
+    return result.length > 0;
+  }
 
-    const accessoriesId = randomUUID();
-    this.categories.set(accessoriesId, {
-      id: accessoriesId,
-      name: "Accessories",
-      description: "Various accessories and add-ons",
-      storeId: defaultStoreId,
-    });
+  async getAllStores(): Promise<Store[]> {
+    return await db.select().from(stores).orderBy(desc(stores.createdAt));
+  }
 
-    // Create sample products
-    const product1Id = randomUUID();
-    this.products.set(product1Id, {
-      id: product1Id,
-      name: "Wireless Headphones",
-      sku: "WH-001",
-      barcode: "1234567890123",
-      description: "High-quality wireless headphones with noise cancellation",
-      categoryId: electronicsId,
-      supplierId: null,
-      purchasePrice: "60.00",
-      sellingPrice: "89.99",
-      stock: "45.000",
-      minStockLevel: "5.000",
-      brand: "AudioTech",
-      storeId: defaultStoreId,
-      isActive: true,
-    });
-
-    const product2Id = randomUUID();
-    this.products.set(product2Id, {
-      id: product2Id,
-      name: "Smartphone Case",
-      sku: "PC-002",
-      barcode: "2345678901234",
-      description: "Protective case for smartphones",
-      categoryId: accessoriesId,
-      supplierId: null,
-      purchasePrice: "8.00",
-      sellingPrice: "19.99",
-      stock: "128.000",
-      minStockLevel: "10.000",
-      brand: "ProtectiveGear",
-      storeId: defaultStoreId,
-      isActive: true,
-    });
-
-    // Create default cash flow categories
+  // Helper method to create default cash flow categories for new stores
+  private async createDefaultCashFlowCategories(storeId: string): Promise<void> {
     const incomeCategories = [
       { name: "Penjualan", description: "Pemasukan dari hasil penjualan usaha." },
       { name: "Pendapatan Jasa/Komisi", description: "Pemasukan dari komisi usaha atau jasa" },
@@ -285,423 +246,260 @@ export class MemStorage implements IStorage {
       { name: "Pengeluaran Lain-lain", description: "Pengeluaran lainnya yang tidak masuk dalam kategori di atas." }
     ];
 
-    incomeCategories.forEach(cat => {
-      const id = randomUUID();
-      this.cashFlowCategories.set(id, {
-        id,
-        name: cat.name,
-        type: "income",
-        description: cat.description,
-        storeId: defaultStoreId,
-        isActive: true
-      });
-    });
+    const incomeValues = incomeCategories.map(cat => ({
+      name: cat.name,
+      type: "income" as const,
+      description: cat.description,
+      storeId,
+      isActive: true
+    }));
 
-    expenseCategories.forEach(cat => {
-      const id = randomUUID();
-      this.cashFlowCategories.set(id, {
-        id,
-        name: cat.name,
-        type: "expense",
-        description: cat.description,
-        storeId: defaultStoreId,
-        isActive: true
-      });
-    });
+    const expenseValues = expenseCategories.map(cat => ({
+      name: cat.name,
+      type: "expense" as const,
+      description: cat.description,
+      storeId,
+      isActive: true
+    }));
 
-    // Create default subscription plans
-    this.createDefaultSubscriptionPlans();
-  }
-
-  private createDefaultSubscriptionPlans() {
-    // Basic Plan - 1 store, 5 users
-    const basicPlanId = randomUUID();
-    this.subscriptionPlans.set(basicPlanId, {
-      id: basicPlanId,
-      name: "Basic Plan",
-      description: "Perfect for small businesses starting out",
-      price: "150000.00", // IDR 150,000 per month
-      currency: "IDR",
-      interval: "monthly",
-      maxStores: 1,
-      maxUsers: 5,
-      features: [
-        "1 Store Location",
-        "Up to 5 Users",
-        "Basic POS Features",
-        "Inventory Management",
-        "Sales Reports",
-        "Customer Management"
-      ],
-      isActive: true,
-      createdAt: new Date(),
-    });
-
-    // Pro Plan - 3 stores, 15 users
-    const proPlanId = randomUUID();
-    this.subscriptionPlans.set(proPlanId, {
-      id: proPlanId,
-      name: "Pro Plan",
-      description: "For growing businesses with multiple locations",
-      price: "350000.00", // IDR 350,000 per month
-      currency: "IDR",
-      interval: "monthly",
-      maxStores: 3,
-      maxUsers: 15,
-      features: [
-        "Up to 3 Store Locations",
-        "Up to 15 Users",
-        "Advanced POS Features",
-        "Multi-store Inventory",
-        "Advanced Reports",
-        "Customer Loyalty Program",
-        "Cash Flow Management",
-        "Priority Support"
-      ],
-      isActive: true,
-      createdAt: new Date(),
-    });
-
-    // Enterprise Plan - unlimited stores, unlimited users
-    const enterprisePlanId = randomUUID();
-    this.subscriptionPlans.set(enterprisePlanId, {
-      id: enterprisePlanId,
-      name: "Enterprise Plan",
-      description: "For large businesses with complex needs",
-      price: "750000.00", // IDR 750,000 per month
-      currency: "IDR",
-      interval: "monthly",
-      maxStores: 999, // Practically unlimited
-      maxUsers: 999, // Practically unlimited
-      features: [
-        "Unlimited Store Locations",
-        "Unlimited Users",
-        "Full POS Suite",
-        "Advanced Analytics",
-        "Custom Integrations",
-        "API Access",
-        "Dedicated Support",
-        "Custom Training"
-      ],
-      isActive: true,
-      createdAt: new Date(),
-    });
-  }
-
-  // Stores
-  async getStore(id: string): Promise<Store | undefined> {
-    return this.stores.get(id);
-  }
-
-  async createStore(insertStore: InsertStore): Promise<Store> {
-    const id = randomUUID();
-    const store: Store = { 
-      ...insertStore, 
-      id,
-      address: insertStore.address ?? null,
-      phone: insertStore.phone ?? null,
-      email: insertStore.email ?? null,
-      description: insertStore.description ?? null,
-      isActive: insertStore.isActive ?? true,
-      createdAt: new Date(),
-    };
-    this.stores.set(id, store);
-    
-    // Create default cash flow categories for the new store
-    this.createDefaultCashFlowCategories(id);
-    
-    return store;
-  }
-
-  async updateStore(id: string, storeData: Partial<InsertStore>): Promise<Store | undefined> {
-    const store = this.stores.get(id);
-    if (!store) return undefined;
-    const updatedStore = { ...store, ...storeData };
-    this.stores.set(id, updatedStore);
-    return updatedStore;
-  }
-
-  async deleteStore(id: string): Promise<boolean> {
-    return this.stores.delete(id);
-  }
-
-  async getAllStores(): Promise<Store[]> {
-    return Array.from(this.stores.values());
+    await db.insert(cashFlowCategories).values([...incomeValues, ...expenseValues]);
   }
 
   // Users
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { 
-      ...insertUser, 
-      id,
+    const [user] = await db.insert(users).values({
+      ...insertUser,
       role: insertUser.role ?? "kasir",
-      storeId: insertUser.storeId ?? null,
       isActive: insertUser.isActive ?? true
-    };
-    this.users.set(id, user);
+    }).returning();
     return user;
   }
 
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-    const updatedUser = { ...user, ...userData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const result = await db.update(users).set(userData).where(eq(users.id, id)).returning();
+    return result[0];
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id);
+    const result = await db.delete(users).where(eq(users.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users).orderBy(users.firstName);
   }
 
   // Categories
   async getCategory(id: string): Promise<Category | undefined> {
-    return this.categories.get(id);
+    const result = await db.select().from(categories).where(eq(categories.id, id)).limit(1);
+    return result[0];
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
-    const id = randomUUID();
-    const category: Category = { 
-      ...insertCategory, 
-      id,
-      description: insertCategory.description ?? null
-    };
-    this.categories.set(id, category);
+    const [category] = await db.insert(categories).values(insertCategory).returning();
     return category;
   }
 
   async updateCategory(id: string, categoryData: Partial<InsertCategory>): Promise<Category | undefined> {
-    const category = this.categories.get(id);
-    if (!category) return undefined;
-    const updatedCategory = { ...category, ...categoryData };
-    this.categories.set(id, updatedCategory);
-    return updatedCategory;
+    const result = await db.update(categories).set(categoryData).where(eq(categories.id, id)).returning();
+    return result[0];
   }
 
   async deleteCategory(id: string): Promise<boolean> {
-    return this.categories.delete(id);
+    const result = await db.delete(categories).where(eq(categories.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllCategories(storeId: string): Promise<Category[]> {
-    return Array.from(this.categories.values()).filter(category => category.storeId === storeId);
+    return await db.select().from(categories).where(eq(categories.storeId, storeId)).orderBy(categories.name);
   }
 
   // Suppliers
   async getSupplier(id: string): Promise<Supplier | undefined> {
-    return this.suppliers.get(id);
+    const result = await db.select().from(suppliers).where(eq(suppliers.id, id)).limit(1);
+    return result[0];
   }
 
   async createSupplier(insertSupplier: InsertSupplier): Promise<Supplier> {
-    const id = randomUUID();
-    const supplier: Supplier = { 
-      ...insertSupplier, 
-      id,
-      email: insertSupplier.email ?? null,
-      phone: insertSupplier.phone ?? null,
-      address: insertSupplier.address ?? null,
-      contactPerson: insertSupplier.contactPerson ?? null
-    };
-    this.suppliers.set(id, supplier);
+    const [supplier] = await db.insert(suppliers).values(insertSupplier).returning();
     return supplier;
   }
 
   async updateSupplier(id: string, supplierData: Partial<InsertSupplier>): Promise<Supplier | undefined> {
-    const supplier = this.suppliers.get(id);
-    if (!supplier) return undefined;
-    const updatedSupplier = { ...supplier, ...supplierData };
-    this.suppliers.set(id, updatedSupplier);
-    return updatedSupplier;
+    const result = await db.update(suppliers).set(supplierData).where(eq(suppliers.id, id)).returning();
+    return result[0];
   }
 
   async deleteSupplier(id: string): Promise<boolean> {
-    return this.suppliers.delete(id);
+    const result = await db.delete(suppliers).where(eq(suppliers.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllSuppliers(storeId: string): Promise<Supplier[]> {
-    return Array.from(this.suppliers.values()).filter(supplier => supplier.storeId === storeId);
+    return await db.select().from(suppliers).where(eq(suppliers.storeId, storeId)).orderBy(suppliers.name);
   }
 
   // Customers
   async getCustomer(id: string): Promise<Customer | undefined> {
-    return this.customers.get(id);
+    const result = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+    return result[0];
   }
 
   async createCustomer(insertCustomer: InsertCustomer): Promise<Customer> {
-    const id = randomUUID();
-    const customer: Customer = { 
-      ...insertCustomer, 
-      id,
-      email: insertCustomer.email ?? null,
-      phone: insertCustomer.phone ?? null,
-      address: insertCustomer.address ?? null,
+    const [customer] = await db.insert(customers).values({
+      ...insertCustomer,
       loyaltyPoints: insertCustomer.loyaltyPoints ?? 0
-    };
-    this.customers.set(id, customer);
+    }).returning();
     return customer;
   }
 
   async updateCustomer(id: string, customerData: Partial<InsertCustomer>): Promise<Customer | undefined> {
-    const customer = this.customers.get(id);
-    if (!customer) return undefined;
-    const updatedCustomer = { ...customer, ...customerData };
-    this.customers.set(id, updatedCustomer);
-    return updatedCustomer;
+    const result = await db.update(customers).set(customerData).where(eq(customers.id, id)).returning();
+    return result[0];
   }
 
   async deleteCustomer(id: string): Promise<boolean> {
-    return this.customers.delete(id);
+    const result = await db.delete(customers).where(eq(customers.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllCustomers(storeId: string): Promise<Customer[]> {
-    return Array.from(this.customers.values()).filter(customer => customer.storeId === storeId);
+    return await db.select().from(customers).where(eq(customers.storeId, storeId)).orderBy(customers.firstName, customers.lastName);
   }
 
   // Products
   async getProduct(id: string): Promise<Product | undefined> {
-    return this.products.get(id);
+    const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    return result[0];
   }
 
   async getProductBySku(sku: string, storeId: string): Promise<Product | undefined> {
-    return Array.from(this.products.values()).find(product => product.sku === sku && product.storeId === storeId);
+    const result = await db.select().from(products)
+      .where(and(eq(products.sku, sku), eq(products.storeId, storeId)))
+      .limit(1);
+    return result[0];
   }
 
   async getProductByBarcode(barcode: string, storeId: string): Promise<Product | undefined> {
-    return Array.from(this.products.values()).find(product => product.barcode === barcode && product.storeId === storeId);
+    const result = await db.select().from(products)
+      .where(and(eq(products.barcode, barcode), eq(products.storeId, storeId)))
+      .limit(1);
+    return result[0];
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const id = randomUUID();
-    const product: Product = { 
-      ...insertProduct, 
-      id,
-      description: insertProduct.description ?? null,
-      barcode: insertProduct.barcode ?? null,
-      categoryId: insertProduct.categoryId ?? null,
-      supplierId: insertProduct.supplierId ?? null,
-      brand: insertProduct.brand ?? null,
+    const [product] = await db.insert(products).values({
+      ...insertProduct,
       stock: insertProduct.stock ?? "0.000",
       minStockLevel: insertProduct.minStockLevel ?? "5.000",
       isActive: insertProduct.isActive ?? true
-    };
-    this.products.set(id, product);
+    }).returning();
     return product;
   }
 
   async updateProduct(id: string, productData: Partial<InsertProduct>): Promise<Product | undefined> {
-    const product = this.products.get(id);
-    if (!product) return undefined;
-    const updatedProduct = { ...product, ...productData };
-    this.products.set(id, updatedProduct);
-    return updatedProduct;
+    const result = await db.update(products).set(productData).where(eq(products.id, id)).returning();
+    return result[0];
   }
 
   async deleteProduct(id: string): Promise<boolean> {
-    return this.products.delete(id);
+    const result = await db.delete(products).where(eq(products.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllProducts(storeId: string): Promise<Product[]> {
-    return Array.from(this.products.values()).filter(product => product.storeId === storeId);
+    return await db.select().from(products).where(eq(products.storeId, storeId)).orderBy(products.name);
   }
 
   async getLowStockProducts(storeId: string): Promise<Product[]> {
-    return Array.from(this.products.values()).filter(product => 
-      product.storeId === storeId && parseFloat(product.stock) <= parseFloat(product.minStockLevel)
-    );
+    return await db.select().from(products)
+      .where(
+        and(
+          eq(products.storeId, storeId),
+          sql`CAST(${products.stock} AS DECIMAL) <= CAST(${products.minStockLevel} AS DECIMAL)`
+        )
+      )
+      .orderBy(products.name);
   }
 
   // Sales
   async getSale(id: string): Promise<Sale | undefined> {
-    return this.sales.get(id);
+    const result = await db.select().from(sales).where(eq(sales.id, id)).limit(1);
+    return result[0];
   }
 
   async createSale(insertSale: InsertSale): Promise<Sale> {
-    const id = randomUUID();
-    const sale: Sale = { 
-      ...insertSale, 
-      id,
-      saleDate: new Date(),
+    const [sale] = await db.insert(sales).values({
+      ...insertSale,
       status: insertSale.status ?? "completed",
-      customerId: insertSale.customerId ?? null,
       tax: insertSale.tax ?? "0",
       discount: insertSale.discount ?? "0"
-    };
-    this.sales.set(id, sale);
+    }).returning();
     return sale;
   }
 
   async getSalesByDateRange(startDate: Date, endDate: Date, storeId: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter(sale => 
-      sale.storeId === storeId && sale.saleDate >= startDate && sale.saleDate <= endDate
-    );
+    return await db.select().from(sales)
+      .where(
+        and(
+          eq(sales.storeId, storeId),
+          gte(sales.saleDate, startDate),
+          lte(sales.saleDate, endDate)
+        )
+      )
+      .orderBy(desc(sales.saleDate));
   }
 
   async getSalesByUser(userId: string, storeId: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter(sale => sale.userId === userId && sale.storeId === storeId);
+    return await db.select().from(sales)
+      .where(and(eq(sales.userId, userId), eq(sales.storeId, storeId)))
+      .orderBy(desc(sales.saleDate));
   }
 
   async getAllSales(storeId: string): Promise<Sale[]> {
-    return Array.from(this.sales.values()).filter(sale => sale.storeId === storeId);
+    return await db.select().from(sales)
+      .where(eq(sales.storeId, storeId))
+      .orderBy(desc(sales.saleDate));
   }
 
   // Sale Items
   async getSaleItems(saleId: string): Promise<SaleItem[]> {
-    return this.saleItems.get(saleId) || [];
+    return await db.select().from(saleItems).where(eq(saleItems.saleId, saleId));
   }
 
   async createSaleItem(insertSaleItem: InsertSaleItem): Promise<SaleItem> {
-    const id = randomUUID();
-    const saleItem: SaleItem = { ...insertSaleItem, id };
-    
-    const existingItems = this.saleItems.get(insertSaleItem.saleId) || [];
-    existingItems.push(saleItem);
-    this.saleItems.set(insertSaleItem.saleId, existingItems);
-    
+    const [saleItem] = await db.insert(saleItems).values(insertSaleItem).returning();
     return saleItem;
   }
 
   // Inventory
   async createInventoryMovement(insertMovement: InsertInventoryMovement): Promise<InventoryMovement> {
-    const id = randomUUID();
-    const movement: InventoryMovement = { 
-      ...insertMovement, 
-      id,
-      movementDate: new Date()
-    };
-    
-    const existingMovements = this.inventoryMovements.get(insertMovement.productId) || [];
-    existingMovements.push(movement);
-    this.inventoryMovements.set(insertMovement.productId, existingMovements);
-    
+    const [movement] = await db.insert(inventoryMovements).values(insertMovement).returning();
     return movement;
   }
 
   async getInventoryMovements(productId: string, storeId: string): Promise<InventoryMovement[]> {
-    const movements = this.inventoryMovements.get(productId) || [];
-    return movements.filter(movement => movement.storeId === storeId);
+    return await db.select().from(inventoryMovements)
+      .where(and(eq(inventoryMovements.productId, productId), eq(inventoryMovements.storeId, storeId)))
+      .orderBy(desc(inventoryMovements.movementDate));
   }
 
   async updateProductStock(productId: string, quantity: number): Promise<boolean> {
-    const product = this.products.get(productId);
-    if (!product) return false;
-    
-    const currentStock = parseFloat(product.stock);
-    const newStock = currentStock + quantity;
-    const updatedProduct = { ...product, stock: newStock.toFixed(3) };
-    this.products.set(productId, updatedProduct);
-    return true;
+    const result = await db.update(products)
+      .set({ stock: sql`CAST(${products.stock} AS DECIMAL) + ${quantity}` })
+      .where(eq(products.id, productId))
+      .returning();
+    return result.length > 0;
   }
 
   async getDashboardStats(storeId: string) {
@@ -710,16 +508,44 @@ export class MemStorage implements IStorage {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todaySales = Array.from(this.sales.values())
-      .filter(sale => sale.storeId === storeId && sale.saleDate >= today && sale.saleDate < tomorrow)
-      .reduce((sum, sale) => sum + parseFloat(sale.total), 0);
+    // Get today's sales total
+    const todaysSales = await db.select({ total: sql<string>`SUM(CAST(${sales.total} AS DECIMAL))` })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.storeId, storeId),
+          gte(sales.saleDate, today),
+          lte(sales.saleDate, tomorrow)
+        )
+      );
+    const todaySales = parseFloat(todaysSales[0]?.total || '0');
 
-    const ordersToday = Array.from(this.sales.values())
-      .filter(sale => sale.storeId === storeId && sale.saleDate >= today && sale.saleDate < tomorrow).length;
+    // Get today's orders count
+    const todaysOrders = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.storeId, storeId),
+          gte(sales.saleDate, today),
+          lte(sales.saleDate, tomorrow)
+        )
+      );
+    const ordersToday = Number(todaysOrders[0]?.count || 0);
 
-    const totalProducts = Array.from(this.products.values()).filter(product => product.storeId === storeId).length;
+    // Get total products count
+    const productsCount = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(products)
+      .where(eq(products.storeId, storeId));
+    const totalProducts = Number(productsCount[0]?.count || 0);
+
+    // Get low stock count
     const lowStockCount = (await this.getLowStockProducts(storeId)).length;
-    const totalCustomers = Array.from(this.customers.values()).filter(customer => customer.storeId === storeId).length;
+
+    // Get total customers count
+    const customersCount = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(customers)
+      .where(eq(customers.storeId, storeId));
+    const totalCustomers = Number(customersCount[0]?.count || 0);
 
     return {
       todaySales,
@@ -732,146 +558,149 @@ export class MemStorage implements IStorage {
 
   // Subscription Plans
   async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
-    return this.subscriptionPlans.get(id);
+    const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+    return result[0];
   }
 
   async createSubscriptionPlan(insertPlan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
-    const id = randomUUID();
-    const plan: SubscriptionPlan = {
+    const [plan] = await db.insert(subscriptionPlans).values({
       ...insertPlan,
-      id,
-      description: insertPlan.description ?? null,
       currency: insertPlan.currency ?? "IDR",
       interval: insertPlan.interval ?? "monthly",
       maxStores: insertPlan.maxStores ?? 1,
       maxUsers: insertPlan.maxUsers ?? 5,
       features: insertPlan.features ?? [],
-      isActive: insertPlan.isActive ?? true,
-      createdAt: new Date(),
-    };
-    this.subscriptionPlans.set(id, plan);
+      isActive: insertPlan.isActive ?? true
+    }).returning();
     return plan;
   }
 
   async updateSubscriptionPlan(id: string, planData: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan | undefined> {
-    const plan = this.subscriptionPlans.get(id);
-    if (!plan) return undefined;
-    const updatedPlan = { ...plan, ...planData };
-    this.subscriptionPlans.set(id, updatedPlan);
-    return updatedPlan;
+    const result = await db.update(subscriptionPlans).set(planData).where(eq(subscriptionPlans.id, id)).returning();
+    return result[0];
   }
 
   async deleteSubscriptionPlan(id: string): Promise<boolean> {
-    return this.subscriptionPlans.delete(id);
+    const result = await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id)).returning();
+    return result.length > 0;
   }
 
   async getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-    return Array.from(this.subscriptionPlans.values());
+    return await db.select().from(subscriptionPlans).orderBy(subscriptionPlans.name);
   }
 
   async getActiveSubscriptionPlans(): Promise<SubscriptionPlan[]> {
-    return Array.from(this.subscriptionPlans.values()).filter(plan => plan.isActive);
+    return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true)).orderBy(subscriptionPlans.name);
   }
 
   // User Subscriptions
   async getUserSubscription(id: string): Promise<UserSubscription | undefined> {
-    return this.userSubscriptions.get(id);
+    const result = await db.select().from(userSubscriptions).where(eq(userSubscriptions.id, id)).limit(1);
+    return result[0];
   }
 
   async createUserSubscription(insertSubscription: InsertUserSubscription): Promise<UserSubscription> {
-    const id = randomUUID();
-    const subscription: UserSubscription = {
+    const [subscription] = await db.insert(userSubscriptions).values({
       ...insertSubscription,
-      id,
       status: insertSubscription.status ?? "pending",
       startDate: insertSubscription.startDate ?? new Date(),
-      autoRenew: insertSubscription.autoRenew ?? true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.userSubscriptions.set(id, subscription);
+      autoRenew: insertSubscription.autoRenew ?? true
+    }).returning();
     return subscription;
   }
 
   async updateUserSubscription(id: string, subscriptionData: Partial<InsertUserSubscription>): Promise<UserSubscription | undefined> {
-    const subscription = this.userSubscriptions.get(id);
-    if (!subscription) return undefined;
-    const updatedSubscription = { 
-      ...subscription, 
-      ...subscriptionData,
-      updatedAt: new Date()
-    };
-    this.userSubscriptions.set(id, updatedSubscription);
-    return updatedSubscription;
+    const result = await db.update(userSubscriptions)
+      .set({ 
+        ...subscriptionData,
+        updatedAt: new Date()
+      })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return result[0];
   }
 
   async deleteUserSubscription(id: string): Promise<boolean> {
-    return this.userSubscriptions.delete(id);
+    const result = await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id)).returning();
+    return result.length > 0;
   }
 
   async getActiveUserSubscription(userId: string): Promise<UserSubscription | undefined> {
-    return Array.from(this.userSubscriptions.values())
-      .find(sub => sub.userId === userId && (sub.status === 'active' || sub.status === 'pending'));
+    const result = await db.select().from(userSubscriptions)
+      .where(
+        and(
+          eq(userSubscriptions.userId, userId),
+          sql`${userSubscriptions.status} IN ('active', 'pending')`
+        )
+      )
+      .limit(1);
+    return result[0];
   }
 
   async getUserSubscriptions(userId: string): Promise<UserSubscription[]> {
-    return Array.from(this.userSubscriptions.values())
-      .filter(sub => sub.userId === userId);
+    return await db.select().from(userSubscriptions)
+      .where(eq(userSubscriptions.userId, userId))
+      .orderBy(desc(userSubscriptions.createdAt));
   }
 
   async getAllUserSubscriptions(): Promise<UserSubscription[]> {
-    return Array.from(this.userSubscriptions.values());
+    return await db.select().from(userSubscriptions).orderBy(desc(userSubscriptions.createdAt));
   }
 
   // Subscription Payments
   async getSubscriptionPayment(id: string): Promise<SubscriptionPayment | undefined> {
-    return this.subscriptionPayments.get(id);
+    const result = await db.select().from(subscriptionPayments).where(eq(subscriptionPayments.id, id)).limit(1);
+    return result[0];
   }
 
   async createSubscriptionPayment(insertPayment: InsertSubscriptionPayment): Promise<SubscriptionPayment> {
-    const id = randomUUID();
-    const payment: SubscriptionPayment = {
+    const [payment] = await db.insert(subscriptionPayments).values({
       ...insertPayment,
-      id,
       currency: insertPayment.currency ?? "IDR",
-      status: insertPayment.status ?? "pending",
-      paymentMethod: insertPayment.paymentMethod ?? null,
-      externalPaymentId: insertPayment.externalPaymentId ?? null,
-      paidAt: insertPayment.paidAt ?? null,
-      createdAt: new Date(),
-    };
-    this.subscriptionPayments.set(id, payment);
+      status: insertPayment.status ?? "pending"
+    }).returning();
     return payment;
   }
 
   async updateSubscriptionPayment(id: string, paymentData: Partial<InsertSubscriptionPayment>): Promise<SubscriptionPayment | undefined> {
-    const payment = this.subscriptionPayments.get(id);
-    if (!payment) return undefined;
-    const updatedPayment = { ...payment, ...paymentData };
-    this.subscriptionPayments.set(id, updatedPayment);
-    return updatedPayment;
+    const result = await db.update(subscriptionPayments).set(paymentData).where(eq(subscriptionPayments.id, id)).returning();
+    return result[0];
   }
 
   async getSubscriptionPayments(subscriptionId: string): Promise<SubscriptionPayment[]> {
-    return Array.from(this.subscriptionPayments.values())
-      .filter(payment => payment.subscriptionId === subscriptionId);
+    return await db.select().from(subscriptionPayments)
+      .where(eq(subscriptionPayments.subscriptionId, subscriptionId))
+      .orderBy(desc(subscriptionPayments.createdAt));
   }
 
   // Quota enforcement
   async getOwnerStoreCount(ownerId: string): Promise<number> {
-    return Array.from(this.stores.values())
-      .filter(store => store.ownerId === ownerId && store.isActive).length;
+    const result = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(stores)
+      .where(and(eq(stores.ownerId, ownerId), eq(stores.isActive, true)));
+    return Number(result[0]?.count || 0);
   }
 
   async getOwnerUserCount(ownerId: string): Promise<number> {
     // Get all stores owned by this owner
-    const ownerStores = Array.from(this.stores.values())
-      .filter(store => store.ownerId === ownerId && store.isActive)
-      .map(store => store.id);
+    const ownerStores = await db.select({ id: stores.id })
+      .from(stores)
+      .where(and(eq(stores.ownerId, ownerId), eq(stores.isActive, true)));
+    
+    const storeIds = ownerStores.map(store => store.id);
+    
+    if (storeIds.length === 0) return 0;
     
     // Count users assigned to any of the owner's stores
-    return Array.from(this.users.values())
-      .filter(user => user.storeId && ownerStores.includes(user.storeId) && user.isActive).length;
+    const result = await db.select({ count: sql<number>`COUNT(*)` })
+      .from(users)
+      .where(
+        and(
+          sql`${users.storeId} IN (${sql.join(storeIds, sql`, `)})`,
+          eq(users.isActive, true)
+        )
+      );
+    return Number(result[0]?.count || 0);
   }
 
   async canCreateStore(ownerId: string): Promise<{ allowed: boolean; reason?: string; currentCount: number; maxAllowed: number }> {
@@ -948,7 +777,7 @@ export class MemStorage implements IStorage {
     const stockValidation: { productId: string; product: Product; requestedQty: number }[] = [];
     
     for (const item of items) {
-      const product = this.products.get(item.productId);
+      const product = await this.getProduct(item.productId);
       if (!product) {
         return { sale: {} as Sale, items: [], error: `Product ${item.productId} not found` };
       }
@@ -965,14 +794,11 @@ export class MemStorage implements IStorage {
       stockValidation.push({ productId: item.productId, product, requestedQty: item.quantity });
     }
     
-    // Step 2: Create backup of current state for rollback
-    const originalProducts = new Map(this.products);
-    
     try {
-      // Step 3: Create the sale
+      // Step 2: Create the sale
       const sale = await this.createSale(saleData);
       
-      // Step 4: Process all items and update inventory atomically
+      // Step 3: Process all items and update inventory atomically
       const saleItems: SaleItem[] = [];
       
       for (const item of items) {
@@ -1003,8 +829,6 @@ export class MemStorage implements IStorage {
       return { sale, items: saleItems };
       
     } catch (error) {
-      // Step 5: Rollback on error
-      this.products = originalProducts;
       return { 
         sale: {} as Sale, 
         items: [], 
@@ -1015,30 +839,18 @@ export class MemStorage implements IStorage {
 
   // Cash Flow methods
   async createCashFlowEntry(insertEntry: InsertCashFlowEntry): Promise<CashFlowEntry> {
-    const id = randomUUID();
-    const entry: CashFlowEntry = {
+    const [entry] = await db.insert(cashFlowEntries).values({
       ...insertEntry,
-      id,
-      date: new Date(),
-      categoryId: insertEntry.categoryId ?? null,
-      productId: insertEntry.productId ?? null,
-      customerId: insertEntry.customerId ?? null,
-      saleId: insertEntry.saleId ?? null,
-      quantity: insertEntry.quantity ?? null,
-      costPrice: insertEntry.costPrice ?? null,
-      photoEvidence: insertEntry.photoEvidence ?? null,
-      notes: insertEntry.notes ?? null,
       paymentStatus: insertEntry.paymentStatus ?? "paid",
       isManualEntry: insertEntry.isManualEntry ?? true
-    };
-    this.cashFlowEntries.push(entry);
+    }).returning();
     return entry;
   }
 
   async getCashFlowEntries(storeId: string): Promise<CashFlowEntry[]> {
-    return [...this.cashFlowEntries]
-      .filter(entry => entry.storeId === storeId)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    return await db.select().from(cashFlowEntries)
+      .where(eq(cashFlowEntries.storeId, storeId))
+      .orderBy(desc(cashFlowEntries.date));
   }
 
   async getCashFlowEntriesByDate(date: Date, storeId: string): Promise<CashFlowEntry[]> {
@@ -1047,9 +859,15 @@ export class MemStorage implements IStorage {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    return this.cashFlowEntries.filter(entry => 
-      entry.storeId === storeId && entry.date >= startOfDay && entry.date <= endOfDay
-    );
+    return await db.select().from(cashFlowEntries)
+      .where(
+        and(
+          eq(cashFlowEntries.storeId, storeId),
+          gte(cashFlowEntries.date, startOfDay),
+          lte(cashFlowEntries.date, endOfDay)
+        )
+      )
+      .orderBy(desc(cashFlowEntries.date));
   }
 
   async getTodayCashFlowStats(storeId: string): Promise<{
@@ -1065,11 +883,21 @@ export class MemStorage implements IStorage {
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     // Get today's sales for the specific store
-    const todaySales = Array.from(this.sales.values())
-      .filter(sale => sale.storeId === storeId && sale.saleDate >= today && sale.saleDate < tomorrow);
+    const todaysSalesResult = await db.select({ 
+      total: sql<string>`SUM(CAST(${sales.total} AS DECIMAL))`,
+      count: sql<number>`COUNT(*)` 
+    })
+      .from(sales)
+      .where(
+        and(
+          eq(sales.storeId, storeId),
+          gte(sales.saleDate, today),
+          lte(sales.saleDate, tomorrow)
+        )
+      );
     
-    const totalSales = todaySales.reduce((sum, sale) => sum + parseFloat(sale.total), 0);
-    const salesCount = todaySales.length;
+    const totalSales = parseFloat(todaysSalesResult[0]?.total || '0');
+    const salesCount = Number(todaysSalesResult[0]?.count || 0);
 
     // Get today's cash flow entries for the specific store
     const todayEntries = await this.getCashFlowEntriesByDate(today, storeId);
@@ -1093,148 +921,102 @@ export class MemStorage implements IStorage {
     };
   }
 
-  // Helper method to create default cash flow categories for a store
-  private createDefaultCashFlowCategories(storeId: string): void {
-    const incomeCategories = [
-      { name: "Penjualan", description: "Pemasukan dari hasil penjualan usaha." },
-      { name: "Pendapatan Jasa/Komisi", description: "Pemasukan dari komisi usaha atau jasa" },
-      { name: "Penambahan Modal", description: "Pemasukan yang digunakan untuk modal tambahan usaha kamu." },
-      { name: "Penagihan Utang/Cicilan", description: "Pemasukan dari pengembalian utang atau pembayaran cicilan." },
-      { name: "Terima Pinjaman", description: "Pemasukan dari penerimaan uang pinjaman untuk usaha kamu." },
-      { name: "Transaksi Agen Pembayaran", description: "Pemasukan dari transaksi sebagai agen pembayaran, contoh: agen BriLink." },
-      { name: "Pendapatan Di Luar Usaha", description: "Pemasukan pribadi yang tidak berhubungan dengan kegiatan usaha. Contoh: hibah, hadiah, atau sedekah." },
-      { name: "Pendapatan Lain-lain", description: "Pendapatan lainnya yang tidak masuk dalam kategori di atas." }
-    ];
-
-    const expenseCategories = [
-      { name: "Pembelian stok", description: "Pengeluaran untuk pembelian barang yang akan dijual kembali." },
-      { name: "Pembelian bahan baku", description: "Pembelian bahan dasar yang akan diolah menjadi barang siap jual." },
-      { name: "Biaya operasional", description: "Biaya untuk menjalankan kegiatan usaha. Contoh: sewa tempat, listrik, dan internet." },
-      { name: "Gaji/Bonus Karyawan", description: "Pembayaran upah, gaji, atau bonus karyawan." },
-      { name: "Pemberian Utang", description: "Pengeluaran untuk memberikan pinjaman uang." },
-      { name: "Transaksi Agen Pembayaran", description: "Pengeluaran untuk transaksi sebagai agen pembayaran, contoh: agen BriLink." },
-      { name: "Pembayaran Utang/Cicilan", description: "Pengeluaran usaha untuk membayar utang/cicilan." },
-      { name: "Pengeluaran Di Luar Usaha", description: "Pengeluaran untuk kebutuhan pribadi yang tidak berhubungan dengan kegiatan usaha. Contoh: bayar berobat anak." },
-      { name: "Pengeluaran Lain-lain", description: "Pengeluaran lainnya yang tidak masuk dalam kategori di atas." }
-    ];
-
-    incomeCategories.forEach(cat => {
-      const id = randomUUID();
-      this.cashFlowCategories.set(id, {
-        id,
-        name: cat.name,
-        type: "income",
-        description: cat.description,
-        storeId,
-        isActive: true
-      });
-    });
-
-    expenseCategories.forEach(cat => {
-      const id = randomUUID();
-      this.cashFlowCategories.set(id, {
-        id,
-        name: cat.name,
-        type: "expense",
-        description: cat.description,
-        storeId,
-        isActive: true
-      });
-    });
-  }
 
   // Cash Flow Categories methods
   async getCashFlowCategory(id: string): Promise<CashFlowCategory | undefined> {
-    return this.cashFlowCategories.get(id);
+    const result = await db.select().from(cashFlowCategories).where(eq(cashFlowCategories.id, id)).limit(1);
+    return result[0];
   }
 
   async createCashFlowCategory(insertCategory: InsertCashFlowCategory): Promise<CashFlowCategory> {
-    const id = randomUUID();
-    const category: CashFlowCategory = {
+    const [category] = await db.insert(cashFlowCategories).values({
       ...insertCategory,
-      id,
-      isActive: insertCategory.isActive ?? true,
-      description: insertCategory.description ?? null
-    };
-    this.cashFlowCategories.set(id, category);
+      isActive: insertCategory.isActive ?? true
+    }).returning();
     return category;
   }
 
   async updateCashFlowCategory(id: string, updateCategory: Partial<InsertCashFlowCategory>, storeId: string): Promise<CashFlowCategory | undefined> {
-    const existing = this.cashFlowCategories.get(id);
-    if (!existing || existing.storeId !== storeId) return undefined;
-    
-    const updated = { ...existing, ...updateCategory };
-    this.cashFlowCategories.set(id, updated);
-    return updated;
+    const result = await db.update(cashFlowCategories)
+      .set(updateCategory)
+      .where(and(eq(cashFlowCategories.id, id), eq(cashFlowCategories.storeId, storeId)))
+      .returning();
+    return result[0];
   }
 
   async deleteCashFlowCategory(id: string, storeId: string): Promise<boolean> {
-    const existing = this.cashFlowCategories.get(id);
-    if (!existing || existing.storeId !== storeId) return false;
-    
-    return this.cashFlowCategories.delete(id);
+    const result = await db.delete(cashFlowCategories)
+      .where(and(eq(cashFlowCategories.id, id), eq(cashFlowCategories.storeId, storeId)))
+      .returning();
+    return result.length > 0;
   }
 
   async getAllCashFlowCategories(storeId: string): Promise<CashFlowCategory[]> {
-    return Array.from(this.cashFlowCategories.values()).filter(category => category.storeId === storeId);
+    return await db.select().from(cashFlowCategories)
+      .where(eq(cashFlowCategories.storeId, storeId))
+      .orderBy(cashFlowCategories.type, cashFlowCategories.name);
   }
 
   async getCashFlowCategoriesByType(type: 'income' | 'expense', storeId: string): Promise<CashFlowCategory[]> {
-    return Array.from(this.cashFlowCategories.values())
-      .filter(cat => cat.type === type && cat.storeId === storeId && cat.isActive);
+    return await db.select().from(cashFlowCategories)
+      .where(
+        and(
+          eq(cashFlowCategories.type, type),
+          eq(cashFlowCategories.storeId, storeId),
+          eq(cashFlowCategories.isActive, true)
+        )
+      )
+      .orderBy(cashFlowCategories.name);
   }
 
   // Enhanced Cash Flow Entry methods
   async updateCashFlowEntry(id: string, updateEntry: Partial<InsertCashFlowEntry>, storeId: string): Promise<CashFlowEntry | undefined> {
-    const index = this.cashFlowEntries.findIndex(entry => entry.id === id);
-    if (index === -1) return undefined;
-
-    const existing = this.cashFlowEntries[index];
-    if (existing.storeId !== storeId) return undefined;
-    
-    const updated: CashFlowEntry = {
-      ...existing,
-      ...updateEntry,
-      categoryId: updateEntry.categoryId ?? existing.categoryId,
-      productId: updateEntry.productId ?? existing.productId,
-      customerId: updateEntry.customerId ?? existing.customerId,
-      saleId: updateEntry.saleId ?? existing.saleId,
-      quantity: updateEntry.quantity ?? existing.quantity,
-      costPrice: updateEntry.costPrice ?? existing.costPrice,
-      photoEvidence: updateEntry.photoEvidence ?? existing.photoEvidence,
-      notes: updateEntry.notes ?? existing.notes
-    };
-    
-    this.cashFlowEntries[index] = updated;
-    return updated;
+    const result = await db.update(cashFlowEntries)
+      .set(updateEntry)
+      .where(and(eq(cashFlowEntries.id, id), eq(cashFlowEntries.storeId, storeId)))
+      .returning();
+    return result[0];
   }
 
   async deleteCashFlowEntry(id: string, storeId: string): Promise<boolean> {
-    const index = this.cashFlowEntries.findIndex(entry => entry.id === id);
-    if (index === -1) return false;
-    
-    const existing = this.cashFlowEntries[index];
-    if (existing.storeId !== storeId) return false;
-    
-    this.cashFlowEntries.splice(index, 1);
-    return true;
+    const result = await db.delete(cashFlowEntries)
+      .where(and(eq(cashFlowEntries.id, id), eq(cashFlowEntries.storeId, storeId)))
+      .returning();
+    return result.length > 0;
   }
 
   async getCashFlowEntriesByDateRange(startDate: Date, endDate: Date, storeId: string): Promise<CashFlowEntry[]> {
-    return this.cashFlowEntries.filter(entry => 
-      entry.storeId === storeId && entry.date >= startDate && entry.date <= endDate
-    ).sort((a, b) => b.date.getTime() - a.date.getTime());
+    return await db.select().from(cashFlowEntries)
+      .where(
+        and(
+          eq(cashFlowEntries.storeId, storeId),
+          gte(cashFlowEntries.date, startDate),
+          lte(cashFlowEntries.date, endDate)
+        )
+      )
+      .orderBy(desc(cashFlowEntries.date));
   }
 
   async getUnpaidCashFlowEntries(storeId: string): Promise<CashFlowEntry[]> {
-    return this.cashFlowEntries.filter(entry => entry.storeId === storeId && entry.paymentStatus === "unpaid")
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    return await db.select().from(cashFlowEntries)
+      .where(
+        and(
+          eq(cashFlowEntries.storeId, storeId),
+          eq(cashFlowEntries.paymentStatus, "unpaid")
+        )
+      )
+      .orderBy(desc(cashFlowEntries.date));
   }
 
   async getCashFlowEntriesByCustomer(customerId: string, storeId: string): Promise<CashFlowEntry[]> {
-    return this.cashFlowEntries.filter(entry => entry.customerId === customerId && entry.storeId === storeId)
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
+    return await db.select().from(cashFlowEntries)
+      .where(
+        and(
+          eq(cashFlowEntries.customerId, customerId),
+          eq(cashFlowEntries.storeId, storeId)
+        )
+      )
+      .orderBy(desc(cashFlowEntries.date));
   }
 
   // Accounts Receivable
@@ -1259,7 +1041,7 @@ export class MemStorage implements IStorage {
 
     const receivables = [];
     for (const [customerId, entries] of Array.from(customerGroups.entries())) {
-      const customer = this.customers.get(customerId);
+      const customer = await this.getCustomer(customerId);
       if (customer) {
         const totalUnpaid = entries.reduce((sum: number, entry: CashFlowEntry) => sum + parseFloat(entry.amount), 0);
         receivables.push({
@@ -1275,4 +1057,4 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new PostgresStorage();
