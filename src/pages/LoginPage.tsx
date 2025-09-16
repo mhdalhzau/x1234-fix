@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { LogIn } from 'lucide-react';
+import SocialLogin from '../components/SocialLogin';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -85,6 +86,17 @@ export default function LoginPage() {
             </div>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <Link
+                to="/forgot-password"
+                className="font-medium text-primary-600 hover:text-primary-500"
+              >
+                Forgot your password?
+              </Link>
+            </div>
+          </div>
+
           <div>
             <button
               type="submit"
@@ -95,6 +107,10 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <div className="mt-6">
+          <SocialLogin disabled={isLoading} />
+        </div>
       </div>
     </div>
   );

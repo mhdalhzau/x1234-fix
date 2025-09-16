@@ -4,6 +4,9 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import TwoFactorPage from './pages/TwoFactorPage';
 import DashboardPage from './pages/DashboardPage';
 import OutletsPage from './pages/OutletsPage';
 import BillingPage from './pages/BillingPage';
@@ -61,6 +64,30 @@ function AppRoutes() {
         element={
           <PublicRoute>
             <RegisterPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <PublicRoute>
+            <ForgotPasswordPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <PublicRoute>
+            <ResetPasswordPage />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/two-factor"
+        element={
+          <PublicRoute>
+            <TwoFactorPage />
           </PublicRoute>
         }
       />
