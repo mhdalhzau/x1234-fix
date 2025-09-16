@@ -164,10 +164,13 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
 }
 
-// For Supabase connection pooling - disable prepared statements and enable SSL
+// For Supabase connection pooling - disable prepared statements and configure SSL properly
 const client = postgres(process.env.DATABASE_URL!, { 
   prepare: false,
-  ssl: 'require'
+  ssl: process.env.NODE_ENV === 'production' ? 'require' : 'prefer',
+  max: 1, // Limit connections for development
+  idle_timeout: 20,
+  connect_timeout: 10
 });
 const db = drizzle(client, {
   schema: {

@@ -125,6 +125,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } 
       });
     } catch (error) {
+      console.error("Login error:", error);
+      if (error instanceof Error) {
+        console.error("Error message:", error.message);
+      }
       res.status(400).json({ message: "Invalid request data" });
     }
   });
