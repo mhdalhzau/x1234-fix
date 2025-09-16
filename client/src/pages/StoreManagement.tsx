@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertStoreSchema, type Store, type InsertStore } from "@shared/schema";
 import { z } from "zod";
+import { useAuth } from "@/lib/auth";
 
 // Form schema that ensures all fields are strings for proper form handling
 const storeFormSchema = z.object({
@@ -54,17 +55,18 @@ export function StoreManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Store | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: stores = [], isLoading } = useQuery<Store[]>({
     queryKey: ['/api/stores'],
   });
 
-  const { data: storeQuota } = useQuery<QuotaInfo>({
+  const { data: storeQuota, isLoading: loadingQuota, isError: quotaError } = useQuery<QuotaInfo>({
     queryKey: ['/api/quota/stores'],
   });
 
-  const { data: currentSubscription } = useQuery<SubscriptionWithPlan>({
+  const { data: currentSubscription, isLoading: loadingSubscription, isError: subscriptionError } = useQuery<SubscriptionWithPlan>({
     queryKey: ['/api/subscriptions/me'],
   });
 
@@ -91,7 +93,7 @@ export function StoreManagement() {
         description: data.description || null,
         ownerId: "", // Will be set by the server to current user
       };
-      return apiRequest('/api/stores', 'POST', storeData);
+      return apiRequest('POST', '/api/stores', storeData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
@@ -122,7 +124,7 @@ export function StoreManagement() {
         email: data.email || null,
         description: data.description || null,
       };
-      return apiRequest(`/api/stores/${id}`, 'PATCH', storeData);
+      return apiRequest('PUT', `/api/stores/${id}`, storeData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/stores'] });
@@ -191,7 +193,9 @@ export function StoreManagement() {
     return <div className="flex justify-center p-8">Loading stores...</div>;
   }
 
-  const quotaPercentage = storeQuota ? (storeQuota.currentCount / storeQuota.maxAllowed) * 100 : 0;
+  const quotaPercentage = storeQuota && storeQuota.maxAllowed > 0 
+    ? (storeQuota.currentCount / storeQuota.maxAllowed) * 100 
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -244,13 +248,18 @@ export function StoreManagement() {
             <Button 
               onClick={handleAddNew} 
               data-testid="add-store-button"
-              disabled={storeQuota && !storeQuota.allowed}
+              disabled={(storeQuota && !storeQuota.allowed) || (user?.role !== 'administrator' && user?.role !== 'owner')}
             >
               <Plus className="mr-2 h-4 w-4" />
               Add Store
               {storeQuota && !storeQuota.allowed && (
                 <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
                   Limit Reached
+                </span>
+              )}
+              {user?.role !== 'administrator' && user?.role !== 'owner' && (
+                <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                  Access Denied
                 </span>
               )}
             </Button>
