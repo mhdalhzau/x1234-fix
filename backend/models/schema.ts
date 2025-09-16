@@ -19,15 +19,16 @@ export const tenants = pgTable("tenants", {
 
 // Users table - people within tenants  
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull(),
-  password: text("password").notNull(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  email: text("email").notNull().unique(),
-  role: text("role").notNull(),
-  storeId: varchar("store_id"),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+  username: varchar("username").notNull(),
+  email: varchar("email").notNull().unique(),
+  password: text("password_hash").notNull(),
+  role: text("role").notNull().default("staff"),
   isActive: boolean("is_active").notNull().default(true),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Outlets table - stores/locations per tenant
