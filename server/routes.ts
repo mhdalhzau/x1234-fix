@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { hashPassword, verifyPassword } from "./utils/password";
 import { 
   loginSchema,
   insertUserSchema,
@@ -101,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { username, password } = loginSchema.parse(req.body);
       
       const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) {
+      if (!user || !(await verifyPassword(password, user.password))) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -149,24 +150,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store routes  
   app.get("/api/stores", requireAuth, async (req, res) => {
     try {
-      if (req.user!.role === 'administrator') {
+      const userRole = req.user!.role;
+      const userId = req.user!.userId;
+
+      if (userRole === 'administrator') {
         // Administrators can see all stores
         const stores = await storage.getAllStores();
-        res.json(stores);
-      } else if (req.user!.role === 'owner') {
+        return res.json(stores);
+      } 
+      
+      if (userRole === 'owner') {
         // Store owners can see all stores they own
         const allStores = await storage.getAllStores();
-        const ownedStores = allStores.filter(store => store.ownerId === req.user!.userId);
-        res.json(ownedStores);
-      } else {
-        // Regular users see their assigned store
-        const user = await storage.getUser(req.user!.userId);
-        if (!user || !user.storeId) {
-          return res.status(403).json({ message: "No store access assigned" });
-        }
-        const store = await storage.getStore(user.storeId);
-        res.json(store ? [store] : []);
+        const ownedStores = allStores.filter(store => store.ownerId === userId);
+        return res.json(ownedStores);
       }
+      
+      // Regular users see their assigned store
+      // Fetch user data to get their assigned storeId
+      const userData = await storage.getUser(userId);
+      if (!userData) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!userData.storeId) {
+        return res.status(403).json({ message: "No store access assigned" });
+      }
+      
+      const userStore = await storage.getStore(userData.storeId);
+      if (!userStore) {
+        return res.status(404).json({ message: "Assigned store not found" });
+      }
+      
+      return res.json([userStore]);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch stores" });
     }

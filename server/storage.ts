@@ -19,6 +19,7 @@ import { randomUUID } from "crypto";
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import { eq, and, gte, lte, sql, desc, asc } from 'drizzle-orm';
+import { hashPassword } from './utils/password';
 
 export interface IStorage {
   // Stores
@@ -277,8 +278,10 @@ export class PostgresStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
+    const hashedPassword = await hashPassword(insertUser.password);
     const [user] = await db.insert(users).values({
       ...insertUser,
+      password: hashedPassword,
       role: insertUser.role ?? "kasir",
       isActive: insertUser.isActive ?? true
     }).returning();
@@ -286,7 +289,11 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateUser(id: string, userData: Partial<InsertUser>): Promise<User | undefined> {
-    const result = await db.update(users).set(userData).where(eq(users.id, id)).returning();
+    const updateData = { ...userData };
+    if (userData.password) {
+      updateData.password = await hashPassword(userData.password);
+    }
+    const result = await db.update(users).set(updateData).where(eq(users.id, id)).returning();
     return result[0];
   }
 
