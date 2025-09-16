@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { tenants, users, outlets, subscriptions, modules, tenantModules } from '../models/schema.js';
@@ -11,6 +11,19 @@ const router = Router();
 router.get('/me', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
+    // If user is admin (no tenant), return admin info
+    if (!authReq.user!.tenantId || authReq.user!.role === 'admin') {
+      return res.json({
+        id: 'admin',
+        businessName: 'Admin Dashboard',
+        status: 'active',
+        stats: {
+          totalUsers: 1,
+          totalOutlets: 0,
+        },
+      });
+    }
+
     const [tenant] = await db.select()
       .from(tenants)
       .where(eq(tenants.id, authReq.user!.tenantId));
@@ -20,14 +33,14 @@ router.get('/me', requireAuth, async (req, res) => {
     }
 
     // Get tenant stats
-    const userCount = await db.select({ count: users.id }).from(users).where(eq(users.tenantId, tenant.id));
-    const outletCount = await db.select({ count: outlets.id }).from(outlets).where(eq(outlets.tenantId, tenant.id));
+    const [userCount] = await db.select({ count: count() }).from(users).where(eq(users.tenantId, tenant.id));
+    const [outletCount] = await db.select({ count: count() }).from(outlets).where(eq(outlets.tenantId, tenant.id));
 
     res.json({
       ...tenant,
       stats: {
-        totalUsers: userCount.length,
-        totalOutlets: outletCount.length,
+        totalUsers: userCount?.count || 0,
+        totalOutlets: outletCount?.count || 0,
       },
     });
   } catch (error) {
@@ -144,8 +157,8 @@ router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req, 
 router.get('/admin/all', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    // For now, only allow if user email is admin@example.com (superadmin)
-    if (authReq.user!.email !== 'admin@example.com') {
+    // For now, only allow if user email is admin@test.com (superadmin)
+    if (authReq.user!.email !== 'admin@test.com') {
       return res.status(403).json({ message: 'Superadmin access required' });
     }
 
@@ -168,8 +181,8 @@ const updateTenantStatusSchema = z.object({
 router.put('/admin/:tenantId/status', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    // For now, only allow if user email is admin@example.com (superadmin)
-    if (authReq.user!.email !== 'admin@example.com') {
+    // For now, only allow if user email is admin@test.com (superadmin)
+    if (authReq.user!.email !== 'admin@test.com') {
       return res.status(403).json({ message: 'Superadmin access required' });
     }
 

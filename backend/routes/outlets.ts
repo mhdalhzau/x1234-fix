@@ -11,6 +11,12 @@ const router = Router();
 router.get('/', requireAuth, async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
+    
+    // If user is admin (no tenant), return empty array
+    if (!authReq.user!.tenantId || authReq.user!.role === 'admin') {
+      return res.json([]);
+    }
+    
     const tenantOutlets = await db.select()
       .from(outlets)
       .where(eq(outlets.tenantId, authReq.user!.tenantId));

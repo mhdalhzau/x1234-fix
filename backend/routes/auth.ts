@@ -139,10 +139,10 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Account is deactivated' });
     }
 
-    // Generate tokens (admin user gets special tenant for superadmin panel)
+    // Generate tokens 
     const payload = {
       userId: foundUser.id,
-      tenantId: null, // Admin doesn't need tenant
+      tenantId: foundUser.role === 'admin' ? null : foundUser.tenantId,
       role: foundUser.role,
       email: foundUser.email,
     };
@@ -150,12 +150,12 @@ router.post('/login', async (req, res) => {
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    // Store refresh token (skip for now to avoid FK issues)
-    // await db.insert(refreshTokens).values({
-    //   userId: foundUser.id,
-    //   token: refreshToken,
-    //   expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    // });
+    // Store refresh token
+    await db.insert(refreshTokens).values({
+      userId: foundUser.id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
 
     res.json({
       message: 'Login successful',
@@ -165,7 +165,7 @@ router.post('/login', async (req, res) => {
         email: foundUser.email,
         role: foundUser.role,
       },
-      tenant: null, // Admin doesn't have tenant
+      tenant: foundUser.role === 'admin' ? null : foundUser.tenantId,
       accessToken,
       refreshToken,
     });
