@@ -47,7 +47,7 @@ export default function SaaSMetricsPage() {
         const response = await axios.get('/api/analytics/metrics', {
           params: { timeRange },
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         });
 
