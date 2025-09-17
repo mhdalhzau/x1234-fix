@@ -58,11 +58,23 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     const currentMrr = mrrResult[0]?.totalMrr || 0;
     const arr = Number(currentMrr) * 12;
 
-    // Get previous period MRR for comparison
+    // Get previous period snapshot (at dateFilter boundary)
     const periodLength = Date.now() - dateFilter.getTime();
     const previousPeriodDate = new Date(dateFilter.getTime() - periodLength);
     
-    // Get previous period MRR
+    // Get previous period active subscriptions (active as of dateFilter)
+    const [previousActiveSubsResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
+        // Not cancelled before dateFilter OR still active
+        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
+      ));
+
+    const previousActiveSubs = previousActiveSubsResult?.count || 0;
+    
+    // Get previous period MRR (from subscriptions active as of dateFilter)
     const previousMrrResult = await db
       .select({
         totalMrr: sum(subscriptionPlans.price)
@@ -70,30 +82,18 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
       .from(subscriptions)
       .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
       .where(and(
-        eq(subscriptions.status, 'active'),
         eq(subscriptionPlans.interval, 'monthly'),
-        gte(subscriptions.createdAt, previousPeriodDate),
-        lt(subscriptions.createdAt, dateFilter)
+        lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
+        // Not cancelled before dateFilter OR still active
+        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
       ));
 
     const previousMrr = previousMrrResult[0]?.totalMrr || 0;
     const mrrChange = Number(previousMrr) > 0 ? ((Number(currentMrr) - Number(previousMrr)) / Number(previousMrr)) * 100 : 0;
+    const subsChange = previousActiveSubs > 0 ? ((activeSubscriptions - previousActiveSubs) / previousActiveSubs) * 100 : 0;
     
     // Calculate ARPU (Average Revenue Per User)
     const arpu = activeSubscriptions > 0 ? Number(currentMrr) / activeSubscriptions : 0;
-
-    // Get previous period active subscriptions for comparison
-    const [previousActiveSubsResult] = await db
-      .select({ count: count() })
-      .from(subscriptions)
-      .where(and(
-        eq(subscriptions.status, 'active'),
-        gte(subscriptions.createdAt, previousPeriodDate),
-        lt(subscriptions.createdAt, dateFilter)
-      ));
-
-    const previousActiveSubs = previousActiveSubsResult?.count || 0;
-    const subsChange = previousActiveSubs > 0 ? ((activeSubscriptions - previousActiveSubs) / previousActiveSubs) * 100 : 0;
 
     // Get total users count
     const [totalUsersResult] = await db
@@ -122,17 +122,18 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     const previousUsers = previousUsersResult?.count || 0;
     const usersChange = previousUsers > 0 ? ((newUsers - previousUsers) / previousUsers) * 100 : 0;
 
-    // Calculate churn rate (simplified - cancelled subscriptions in period)
+    // Calculate churn rate (simplified - cancelled subscriptions from period-start cohort)
     const [cancelledSubscriptionsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
       .where(and(
         eq(subscriptions.status, 'cancelled'),
-        gte(subscriptions.updatedAt, dateFilter)
+        gte(subscriptions.updatedAt, dateFilter),
+        lt(subscriptions.createdAt, dateFilter) // Only count cancellations from period-start cohort
       ));
 
     const cancelledSubscriptions = cancelledSubscriptionsResult?.count || 0;
-    const churnRate = activeSubscriptions > 0 ? (cancelledSubscriptions / (activeSubscriptions + cancelledSubscriptions)) * 100 : 0;
+    const churnRate = previousActiveSubs > 0 ? (cancelledSubscriptions / previousActiveSubs) * 100 : 0;
 
     // Calculate CLV (simplified: ARPU / churn rate * 100)
     const clv = churnRate > 0 ? (arpu * 100) / churnRate : arpu * 36; // Default to 36 months if no churn
@@ -170,7 +171,32 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     const arpuChange = previousArpu > 0 ? ((arpu - previousArpu) / previousArpu) * 100 : 0;
 
     // Calculate CLV change (simplified)
-    const previousChurnRate = previousActiveSubs > 0 ? (cancelledSubscriptions / (previousActiveSubs + cancelledSubscriptions)) * 100 : 0;
+    
+    // Get previous period active subscriptions snapshot (at previousPeriodDate boundary) 
+    const [prevPeriodActiveSubsResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        lt(subscriptions.createdAt, previousPeriodDate), // Created before previousPeriodDate
+        // Not cancelled before previousPeriodDate OR still active
+        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
+      ));
+
+    const prevPeriodActiveSubs = prevPeriodActiveSubsResult?.count || 0;
+    
+    // Previous period churn calculation
+    const [prevCancelledResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        eq(subscriptions.status, 'cancelled'),
+        gte(subscriptions.updatedAt, previousPeriodDate),
+        lt(subscriptions.updatedAt, dateFilter),
+        lt(subscriptions.createdAt, previousPeriodDate) // Only count cancellations from previous period-start cohort
+      ));
+    
+    const prevCancelled = prevCancelledResult?.count || 0;
+    const previousChurnRate = prevPeriodActiveSubs > 0 ? (prevCancelled / prevPeriodActiveSubs) * 100 : 0;
     const previousClv = previousChurnRate > 0 ? (previousArpu * 100) / previousChurnRate : previousArpu * 36;
     const clvChange = previousClv > 0 ? ((clv - previousClv) / previousClv) * 100 : 0;
 
