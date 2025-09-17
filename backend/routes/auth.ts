@@ -66,7 +66,7 @@ router.post('/register', async (req, res) => {
       username: data.ownerName,
       email: data.ownerEmail,
       password: passwordHash,
-      role: 'owner',
+      role: 'tenant_owner',
     }).returning();
 
     // Send welcome email
@@ -142,7 +142,7 @@ router.post('/login', async (req, res) => {
     // Generate tokens 
     const payload = {
       userId: foundUser.id,
-      tenantId: foundUser.role === 'admin' ? null : foundUser.tenantId,
+      tenantId: foundUser.role === 'superadmin' ? null : foundUser.tenantId,
       role: foundUser.role,
       email: foundUser.email,
     };
@@ -165,7 +165,7 @@ router.post('/login', async (req, res) => {
         email: foundUser.email,
         role: foundUser.role,
       },
-      tenant: foundUser.role === 'admin' ? null : foundUser.tenantId,
+      tenant: foundUser.role === 'superadmin' ? null : foundUser.tenantId,
       accessToken,
       refreshToken,
     });

@@ -3,7 +3,7 @@ import { eq, desc, and, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { tenants, users, outlets, subscriptions, modules, tenantModules } from '../models/schema.js';
-import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireRole, requireTenantBound, requireSuperadmin, canAccessTenant, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -11,11 +11,11 @@ const router = Router();
 router.get('/me', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    // If user is admin (no tenant), return admin info
-    if (!authReq.user!.tenantId || authReq.user!.role === 'admin') {
+    // If user is superadmin (no tenant), return superadmin info
+    if (!authReq.user!.tenantId || authReq.user!.role === 'superadmin') {
       return res.json({
-        id: 'admin',
-        businessName: 'Admin Dashboard',
+        id: 'superadmin',
+        businessName: 'Superadmin Dashboard',
         status: 'active',
         stats: {
           totalUsers: 1,
@@ -57,7 +57,7 @@ const updateTenantSchema = z.object({
   address: z.string().optional(),
 });
 
-router.put('/me', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
+router.put('/me', requireAuth, requireTenantBound, requireRole(['tenant_owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = updateTenantSchema.parse(req.body);
@@ -109,7 +109,7 @@ const toggleModuleSchema = z.object({
   isEnabled: z.boolean(),
 });
 
-router.post('/modules/toggle', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
+router.post('/modules/toggle', requireAuth, requireTenantBound, requireRole(['tenant_owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = toggleModuleSchema.parse(req.body);
@@ -160,13 +160,8 @@ router.post('/modules/toggle', requireAuth, requireTenantBound, requireRole(['ow
 });
 
 // Admin routes - get all tenants (superadmin only)
-router.get('/admin/all', requireAuth, async (req, res) => {
-  const authReq = req as AuthenticatedRequest;
+router.get('/admin/all', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    // For now, only allow if user email is admin@test.com (superadmin)
-    if (authReq.user!.email !== 'admin@test.com') {
-      return res.status(403).json({ message: 'Superadmin access required' });
-    }
 
     const allTenants = await db.select()
       .from(tenants)
@@ -184,13 +179,8 @@ const updateTenantStatusSchema = z.object({
   status: z.enum(['trial', 'active', 'suspended', 'expired']),
 });
 
-router.put('/admin/:tenantId/status', requireAuth, async (req, res) => {
-  const authReq = req as AuthenticatedRequest;
+router.put('/admin/:tenantId/status', requireAuth, requireSuperadmin, async (req, res) => {
   try {
-    // For now, only allow if user email is admin@test.com (superadmin)
-    if (authReq.user!.email !== 'admin@test.com') {
-      return res.status(403).json({ message: 'Superadmin access required' });
-    }
 
     const { tenantId } = req.params;
     const data = updateTenantStatusSchema.parse(req.body);
