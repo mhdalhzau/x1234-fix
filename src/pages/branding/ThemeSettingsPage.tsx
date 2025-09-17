@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Save, Palette, Monitor, Sun, Moon, Smartphone } from 'lucide-react';
+import { Save, Monitor, Sun, Moon, Smartphone } from 'lucide-react';
 
 interface ThemeSettings {
   primaryColor: string;
@@ -44,6 +44,10 @@ export default function ThemeSettingsPage() {
   ];
 
   const handleColorChange = (field: keyof ThemeSettings, value: string) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleBooleanChange = (field: keyof ThemeSettings, value: boolean) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -245,7 +249,7 @@ export default function ThemeSettingsPage() {
                 </span>
               </div>
               <button
-                onClick={() => handleColorChange('darkMode', !settings.darkMode)}
+                onClick={() => handleBooleanChange('darkMode', !settings.darkMode)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                   settings.darkMode ? 'bg-primary-600' : 'bg-gray-200'
                 }`}

@@ -84,7 +84,7 @@ async function seedDatabase() {
       tenantId: null,
       username: 'superadmin',
       email: 'admin@system.com',
-      passwordHash: '$2a$10$BjGQFR/1b5xPSFaltA2sLeOmnoqh6DCMQczxb.4LMAYNd/b/Hmt0K',
+      password: '$2a$10$BjGQFR/1b5xPSFaltA2sLeOmnoqh6DCMQczxb.4LMAYNd/b/Hmt0K',
       role: 'admin' as const,
       isActive: true,
       lastLoginAt: null,
