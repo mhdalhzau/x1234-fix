@@ -5,6 +5,7 @@ import path from 'path';
 
 // Import routes
 import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
 import tenantRoutes from './routes/tenants.js';
 import outletRoutes from './routes/outlets.js';
 import subscriptionRoutes from './routes/subscriptions.js';
@@ -72,6 +73,7 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/outlets', outletRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);

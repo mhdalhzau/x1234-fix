@@ -453,4 +453,29 @@ router.post('/verify-2fa', async (req, res) => {
   }
 });
 
+// Social OAuth routes (basic placeholders for Phase 6)
+router.get('/google', async (req, res) => {
+  // TODO: Implement Google OAuth redirect
+  res.status(501).json({ 
+    message: 'Google OAuth integration will be implemented in Phase 7',
+    redirect_url: 'https://accounts.google.com/oauth/authorize' 
+  });
+});
+
+router.get('/github', async (req, res) => {
+  // TODO: Implement GitHub OAuth redirect  
+  res.status(501).json({ 
+    message: 'GitHub OAuth integration will be implemented in Phase 7',
+    redirect_url: 'https://github.com/login/oauth/authorize' 
+  });
+});
+
+router.get('/microsoft', async (req, res) => {
+  // TODO: Implement Microsoft OAuth redirect
+  res.status(501).json({ 
+    message: 'Microsoft OAuth integration will be implemented in Phase 7',
+    redirect_url: 'https://login.microsoftonline.com/oauth2/v2.0/authorize' 
+  });
+});
+
 export default router;

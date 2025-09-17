@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
+import axios from 'axios';
 
 interface User {
   id: string;
@@ -17,42 +18,48 @@ export default function UserManagementPage() {
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
-  const roles = ['admin', 'manager', 'staff'];
+  const [error, setError] = useState<string | null>(null);
+  const roles = ['superadmin', 'tenant_owner', 'admin', 'staff'];
 
-  // Mock data - replace with API call
+  // Fetch users from API
   useEffect(() => {
-    setTimeout(() => {
-      setUsers([
-        {
-          id: '1',
-          username: 'admin',
-          email: 'admin@test.com',
-          role: 'admin',
-          isActive: true,
-          lastLoginAt: '2024-01-15T10:30:00Z',
-          createdAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: '2',
-          username: 'manager1',
-          email: 'manager@test.com',
-          role: 'manager',
-          isActive: true,
-          lastLoginAt: '2024-01-14T15:45:00Z',
-          createdAt: '2024-01-02T00:00:00Z'
-        },
-        {
-          id: '3',
-          username: 'staff1',
-          email: 'staff@test.com',
-          role: 'staff',
-          isActive: false,
-          lastLoginAt: null,
-          createdAt: '2024-01-03T00:00:00Z'
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          setError('Authentication required');
+          return;
         }
-      ]);
-      setIsLoading(false);
-    }, 1000);
+
+        const response = await axios.get('/api/users', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const usersData = response.data.map((user: any) => ({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+          isActive: user.isActive,
+          lastLoginAt: user.lastLoginAt,
+          createdAt: user.createdAt
+        }));
+
+        setUsers(usersData);
+      } catch (err: any) {
+        console.error('Error fetching users:', err);
+        setError(err.response?.data?.message || 'Failed to load users');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   const filteredUsers = users.filter(user => {
@@ -68,26 +75,68 @@ export default function UserManagementPage() {
 
   const handleCreateUser = () => {
     // TODO: Implement user creation modal
-    console.log('Create user clicked');
+    console.log('Create user clicked - This will be implemented in the next phase');
   };
 
-  const handleEditUser = (user: User) => {
-    // TODO: Implement user edit modal
-    console.log('Edit user:', user);
+  const handleEditUser = () => {
+    // TODO: Implement user edit modal  
+    console.log('Edit user clicked - This will be implemented in the next phase');
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      // TODO: Implement delete user API call
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      await axios.delete(`/api/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Remove user from local state
       setUsers(users.filter(user => user.id !== userId));
+    } catch (err: any) {
+      console.error('Error deleting user:', err);
+      setError(err.response?.data?.message || 'Failed to delete user');
     }
   };
 
   const handleToggleUserStatus = async (userId: string) => {
-    // TODO: Implement toggle user status API call
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, isActive: !user.isActive } : user
-    ));
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (!token) {
+        setError('Authentication required');
+        return;
+      }
+
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      await axios.put(`/api/users/${userId}`, 
+        { isActive: !user.isActive },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Update user in local state
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, isActive: !u.isActive } : u
+      ));
+    } catch (err: any) {
+      console.error('Error toggling user status:', err);
+      setError(err.response?.data?.message || 'Failed to update user status');
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -124,6 +173,11 @@ export default function UserManagementPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
           <p className="text-gray-600">Manage users, roles, and permissions</p>
+          {error && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {error}
+            </div>
+          )}
         </div>
         <button
           onClick={handleCreateUser}
