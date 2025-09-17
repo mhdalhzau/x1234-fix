@@ -3,13 +3,14 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { loadStripe } from '@stripe/stripe-js';
 import axios from 'axios';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import developmentConfig from '../config/development';
 
-// Load Stripe public key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY!);
+// Load Stripe public key from config
+const stripePromise = loadStripe(developmentConfig.STRIPE_PUBLISHABLE_KEY);
 
 interface CheckoutFormProps {
   planId: string;
-  onSuccess: () => void;
+  onSuccess: (paymentIntentId?: string) => void;
 }
 
 function CheckoutForm({ planId, onSuccess }: CheckoutFormProps) {
@@ -72,6 +73,7 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [planInfo, setPlanInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!planId) {
