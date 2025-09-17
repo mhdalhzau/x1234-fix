@@ -1,0 +1,19 @@
+               List of relations
+ Schema |        Name        | Type  |  Owner   
+--------+--------------------+-------+----------
+ public | billing_history    | table | postgres
+ public | blog_posts         | table | postgres
+ public | faqs               | table | postgres
+ public | feature_votes      | table | postgres
+ public | modules            | table | postgres
+ public | outlets            | table | postgres
+ public | refresh_tokens     | table | postgres
+ public | roadmap_features   | table | postgres
+ public | subscription_plans | table | postgres
+ public | subscriptions      | table | postgres
+ public | tenant_modules     | table | postgres
+ public | tenants            | table | postgres
+ public | testimonials       | table | postgres
+ public | users              | table | postgres
+(14 rows)
+
