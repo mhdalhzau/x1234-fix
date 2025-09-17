@@ -1,0 +1,14 @@
+                                            List of relations
+ Schema |        Name        | Type  |  Owner   | Persistence | Access method |    Size    | Description 
+--------+--------------------+-------+----------+-------------+---------------+------------+-------------
+ public | billing_history    | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | modules            | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | outlets            | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | refresh_tokens     | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | subscription_plans | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | subscriptions      | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | tenant_modules     | table | postgres | permanent   | heap          | 0 bytes    | 
+ public | tenants            | table | postgres | permanent   | heap          | 8192 bytes | 
+ public | users              | table | postgres | permanent   | heap          | 16 kB      | 
+(9 rows)
+
