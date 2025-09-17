@@ -9,6 +9,7 @@ import tenantRoutes from './routes/tenants.js';
 import outletRoutes from './routes/outlets.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import analyticsRoutes from './routes/analytics.js';
+import contentRoutes from './routes/content.js';
 import webhookRoutes from './routes/webhooks.js';
 
 // Load environment variables
@@ -75,6 +76,7 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/outlets', outletRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/content', contentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
 // Serve static files in production

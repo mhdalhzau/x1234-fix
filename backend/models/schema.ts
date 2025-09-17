@@ -1,4 +1,4 @@
-import { pgTable, text, varchar, integer, boolean, timestamp, decimal, uuid, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, decimal, uuid, primaryKey, unique } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
@@ -121,6 +121,83 @@ export const refreshTokens = pgTable("refresh_tokens", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
+// Content Management Tables
+
+// Blog posts
+export const blogPosts = pgTable("blog_posts", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(),
+  author: text("author").notNull(),
+  publishDate: timestamp("publish_date"),
+  status: text("status", { enum: ["draft", "published", "scheduled"] }).notNull().default("draft"),
+  views: integer("views").notNull().default(0),
+  category: text("category").notNull(),
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// FAQs
+export const faqs = pgTable("faqs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  category: text("category").notNull(),
+  isPublished: boolean("is_published").notNull().default(false),
+  order: integer("order").notNull().default(0),
+  views: integer("views").notNull().default(0),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Testimonials
+export const testimonials = pgTable("testimonials", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  customerName: text("customer_name").notNull(),
+  customerTitle: text("customer_title").notNull(),
+  customerCompany: text("customer_company").notNull(),
+  testimonial: text("testimonial").notNull(),
+  rating: integer("rating").notNull().default(5),
+  isPublished: boolean("is_published").notNull().default(false),
+  isFeatured: boolean("is_featured").notNull().default(false),
+  avatarUrl: text("avatar_url"),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Product roadmap features
+export const roadmapFeatures = pgTable("roadmap_features", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  status: text("status", { enum: ["planned", "in_progress", "completed", "cancelled"] }).notNull().default("planned"),
+  priority: text("priority", { enum: ["low", "medium", "high", "critical"] }).notNull().default("medium"),
+  estimatedQuarter: text("estimated_quarter"),
+  completedAt: timestamp("completed_at"),
+  createdBy: uuid("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Feature votes for roadmap
+export const featureVotes = pgTable("feature_votes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  featureId: uuid("feature_id").references(() => roadmapFeatures.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
+  ipAddress: text("ip_address"), // For anonymous voting
+  userAgent: text("user_agent"), // For abuse prevention
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+}, (table) => ({
+  // Ensure one vote per user per feature (for authenticated users only)
+  uniqueUserFeatureVote: unique().on(table.featureId, table.userId),
+}));
+
 // Insert schemas for validation
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -128,11 +205,25 @@ export const insertOutletSchema = createInsertSchema(outlets).omit({ id: true, c
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertBillingHistorySchema = createInsertSchema(billingHistory).omit({ id: true, createdAt: true });
 
+// Content management insert schemas
+export const insertBlogPostSchema = createInsertSchema(blogPosts).omit({ id: true, views: true, createdAt: true, updatedAt: true });
+export const insertFaqSchema = createInsertSchema(faqs).omit({ id: true, views: true, createdAt: true, updatedAt: true });
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertRoadmapFeatureSchema = createInsertSchema(roadmapFeatures).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFeatureVoteSchema = createInsertSchema(featureVotes).omit({ id: true, createdAt: true });
+
 // Select schemas
 export const selectTenantSchema = createSelectSchema(tenants);
 export const selectUserSchema = createSelectSchema(users);
 export const selectOutletSchema = createSelectSchema(outlets);
 export const selectSubscriptionSchema = createSelectSchema(subscriptions);
+
+// Content management select schemas
+export const selectBlogPostSchema = createSelectSchema(blogPosts);
+export const selectFaqSchema = createSelectSchema(faqs);
+export const selectTestimonialSchema = createSelectSchema(testimonials);
+export const selectRoadmapFeatureSchema = createSelectSchema(roadmapFeatures);
+export const selectFeatureVoteSchema = createSelectSchema(featureVotes);
 
 // Types
 export type Tenant = typeof tenants.$inferSelect;
@@ -145,8 +236,22 @@ export type TenantModule = typeof tenantModules.$inferSelect;
 export type BillingHistory = typeof billingHistory.$inferSelect;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
 
+// Content management types
+export type BlogPost = typeof blogPosts.$inferSelect;
+export type FAQ = typeof faqs.$inferSelect;
+export type Testimonial = typeof testimonials.$inferSelect;
+export type RoadmapFeature = typeof roadmapFeatures.$inferSelect;
+export type FeatureVote = typeof featureVotes.$inferSelect;
+
 export type InsertTenant = typeof tenants.$inferInsert;
 export type InsertUser = typeof users.$inferInsert;
 export type InsertOutlet = typeof outlets.$inferInsert;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
 export type InsertBillingHistory = typeof billingHistory.$inferInsert;
+
+// Content management insert types
+export type InsertBlogPost = typeof blogPosts.$inferInsert;
+export type InsertFAQ = typeof faqs.$inferInsert;
+export type InsertTestimonial = typeof testimonials.$inferInsert;
+export type InsertRoadmapFeature = typeof roadmapFeatures.$inferInsert;
+export type InsertFeatureVote = typeof featureVotes.$inferInsert;
