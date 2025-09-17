@@ -4,14 +4,14 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import tenantRoutes from './routes/tenants.js';
-import outletRoutes from './routes/outlets.js';
-import subscriptionRoutes from './routes/subscriptions.js';
-import analyticsRoutes from './routes/analytics.js';
-import contentRoutes from './routes/content.js';
-import webhookRoutes from './routes/webhooks.js';
+import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
+import tenantRoutes from './routes/tenants';
+import outletRoutes from './routes/outlets';
+import subscriptionRoutes from './routes/subscriptions';
+import analyticsRoutes from './routes/analytics';
+import contentRoutes from './routes/content';
+import webhookRoutes from './routes/webhooks';
 
 // Load environment variables
 dotenv.config();
