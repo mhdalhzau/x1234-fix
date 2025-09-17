@@ -437,4 +437,117 @@ router.get('/revenue', requireAuth, requireSuperadmin, async (req, res) => {
   }
 });
 
+// Get churn analysis
+router.get('/churn', requireAuth, requireSuperadmin, async (req, res) => {
+  try {
+    const timeRange = req.query.timeRange as string || '30days';
+    let dateFilter: Date;
+    
+    switch (timeRange) {
+      case '7days':
+        dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30days':
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90days':
+        dateFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '1year':
+        dateFilter = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    // Calculate current churn rate
+    const [activeSubscriptionsResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'active'));
+
+    const activeSubscriptions = activeSubscriptionsResult?.count || 0;
+
+    // Get cancelled subscriptions in the period
+    const [cancelledSubscriptionsResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        eq(subscriptions.status, 'cancelled'),
+        gte(subscriptions.updatedAt, dateFilter)
+      ));
+
+    const cancelledSubscriptions = cancelledSubscriptionsResult?.count || 0;
+
+    // Calculate churn rate
+    const totalPeriodCustomers = activeSubscriptions + cancelledSubscriptions;
+    const churnRate = totalPeriodCustomers > 0 ? (cancelledSubscriptions / totalPeriodCustomers) * 100 : 0;
+
+    // Get previous period churn for comparison
+    const periodLength = Date.now() - dateFilter.getTime();
+    const previousPeriodDate = new Date(dateFilter.getTime() - periodLength);
+    
+    const [prevCancelledResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        eq(subscriptions.status, 'cancelled'),
+        gte(subscriptions.updatedAt, previousPeriodDate),
+        lt(subscriptions.updatedAt, dateFilter)
+      ));
+
+    const prevCancelled = prevCancelledResult?.count || 0;
+    const [prevActiveResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(and(
+        lt(subscriptions.createdAt, previousPeriodDate),
+        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
+      ));
+
+    const prevActive = prevActiveResult?.count || 0;
+    const prevTotalCustomers = prevActive + prevCancelled;
+    const previousChurnRate = prevTotalCustomers > 0 ? (prevCancelled / prevTotalCustomers) * 100 : 0;
+    
+    const churnChange = churnRate - previousChurnRate;
+
+    // Mock at-risk users calculation (in real world this would be based on engagement metrics)
+    const atRiskUsers = Math.max(0, Math.floor(activeSubscriptions * 0.05)); // 5% of active users
+
+    // Mock churn reasons (in real world this would come from exit surveys/feedback)
+    const churnReasons = [
+      { reason: 'Price concerns', count: Math.floor(cancelledSubscriptions * 0.35), percentage: 35.2 },
+      { reason: 'Better competitor', count: Math.floor(cancelledSubscriptions * 0.26), percentage: 26.1 },
+      { reason: 'Lack of features', count: Math.floor(cancelledSubscriptions * 0.17), percentage: 17.4 },
+      { reason: 'Poor support', count: Math.floor(cancelledSubscriptions * 0.13), percentage: 13.0 },
+      { reason: 'Technical issues', count: Math.floor(cancelledSubscriptions * 0.09), percentage: 8.7 }
+    ];
+
+    // Mock cohort retention data
+    const cohortData = [
+      { period: 'Month 1', retention: 95.2 },
+      { period: 'Month 3', retention: 87.1 },
+      { period: 'Month 6', retention: 78.9 },
+      { period: 'Month 12', retention: 71.3 },
+      { period: 'Month 24', retention: 65.8 }
+    ];
+
+    const churnAnalytics = {
+      churnRate: {
+        value: churnRate,
+        change: churnChange,
+        trend: churnChange <= 0 ? 'down' as const : 'up' as const // Lower churn is better
+      },
+      atRiskUsers,
+      churnReasons,
+      cohortData
+    };
+
+    res.json(churnAnalytics);
+  } catch (error) {
+    console.error('Churn analytics error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 export default router;

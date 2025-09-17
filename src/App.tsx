@@ -39,6 +39,7 @@ import MetricsPage from './pages/analytics/MetricsPage';
 import UserAnalyticsPage from './pages/analytics/UserAnalyticsPage';
 import SubscriptionAnalyticsPage from './pages/analytics/SubscriptionAnalyticsPage';
 import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
+import ChurnAnalysisPage from './pages/analytics/ChurnAnalysisPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -248,6 +249,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <SuperAdminRoute>
               <UserAnalyticsPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics/churn"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <ChurnAnalysisPage />
             </SuperAdminRoute>
           </ProtectedRoute>
         }
