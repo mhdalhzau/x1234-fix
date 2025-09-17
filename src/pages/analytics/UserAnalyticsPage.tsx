@@ -32,7 +32,7 @@ export default function UserAnalyticsPage() {
         const response = await axios.get('/api/analytics/users', {
           params: { timeRange },
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
           },
         });
 

@@ -8,13 +8,17 @@ import {
   subscriptionPlans,
   billingHistory 
 } from '../models/schema.js';
-import { requireAuth, requireSuperadmin, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireSuperadmin, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get SaaS metrics (superadmin only)
-router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
+// Get SaaS metrics (role-based scoping)
+router.get('/metrics', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const isSuperadmin = authReq.user?.role === 'superadmin';
+    const userTenantId = authReq.user?.tenantId;
+    
     const timeRange = req.query.timeRange as string || '30days';
     let dateFilter: Date;
     
@@ -35,25 +39,33 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Get total active subscriptions
+    // Get total active subscriptions (tenant-scoped)
     const [activeSubscriptionsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(eq(subscriptions.status, 'active'));
+      .where(isSuperadmin ? 
+        eq(subscriptions.status, 'active') :
+        and(eq(subscriptions.status, 'active'), eq(subscriptions.tenantId, userTenantId!)));
 
     const activeSubscriptions = activeSubscriptionsResult?.count || 0;
 
-    // Get total MRR from active subscriptions
+    // Get total MRR from active subscriptions (tenant-scoped)
     const mrrResult = await db
       .select({
         totalMrr: sum(subscriptionPlans.price)
       })
       .from(subscriptions)
       .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(and(
-        eq(subscriptions.status, 'active'),
-        eq(subscriptionPlans.interval, 'monthly')
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptionPlans.interval, 'monthly')
+        ) :
+        and(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptionPlans.interval, 'monthly'),
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const currentMrr = mrrResult[0]?.totalMrr || 0;
     const arr = Number(currentMrr) * 12;
@@ -62,31 +74,44 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     const periodLength = Date.now() - dateFilter.getTime();
     const previousPeriodDate = new Date(dateFilter.getTime() - periodLength);
     
-    // Get previous period active subscriptions (active as of dateFilter)
+    // Get previous period active subscriptions (active as of dateFilter) - tenant-scoped
     const [previousActiveSubsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
-        // Not cancelled before dateFilter OR still active
-        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
-      ));
+      .where(isSuperadmin ?
+        and(
+          lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
+          // Not cancelled before dateFilter OR still active
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
+        ) :
+        and(
+          lt(subscriptions.createdAt, dateFilter),
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`,
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const previousActiveSubs = previousActiveSubsResult?.count || 0;
     
-    // Get previous period MRR (from subscriptions active as of dateFilter)
+    // Get previous period MRR (from subscriptions active as of dateFilter) - tenant-scoped
     const previousMrrResult = await db
       .select({
         totalMrr: sum(subscriptionPlans.price)
       })
       .from(subscriptions)
       .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(and(
-        eq(subscriptionPlans.interval, 'monthly'),
-        lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
-        // Not cancelled before dateFilter OR still active
-        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptionPlans.interval, 'monthly'),
+          lt(subscriptions.createdAt, dateFilter), // Created before dateFilter
+          // Not cancelled before dateFilter OR still active
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`
+        ) :
+        and(
+          eq(subscriptionPlans.interval, 'monthly'),
+          lt(subscriptions.createdAt, dateFilter),
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${dateFilter.toISOString()})`,
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const previousMrr = previousMrrResult[0]?.totalMrr || 0;
     const mrrChange = Number(previousMrr) > 0 ? ((Number(currentMrr) - Number(previousMrr)) / Number(previousMrr)) * 100 : 0;
@@ -95,42 +120,58 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     // Calculate ARPU (Average Revenue Per User)
     const arpu = activeSubscriptions > 0 ? Number(currentMrr) / activeSubscriptions : 0;
 
-    // Get total users count
+    // Get total users count (tenant-scoped)
     const [totalUsersResult] = await db
       .select({ count: count() })
-      .from(users);
+      .from(users)
+      .where(isSuperadmin ? sql`true` : eq(users.tenantId, userTenantId!));
     
     const totalUsers = totalUsersResult?.count || 0;
 
-    // Get new users in the time period
+    // Get new users in the time period (tenant-scoped)
     const [newUsersResult] = await db
       .select({ count: count() })
       .from(users)
-      .where(gte(users.createdAt, dateFilter));
+      .where(isSuperadmin ?
+        gte(users.createdAt, dateFilter) :
+        and(gte(users.createdAt, dateFilter), eq(users.tenantId, userTenantId!)));
 
     const newUsers = newUsersResult?.count || 0;
 
-    // Get previous period users for comparison
+    // Get previous period users for comparison (tenant-scoped)
     const [previousUsersResult] = await db
       .select({ count: count() })
       .from(users)
-      .where(and(
-        gte(users.createdAt, previousPeriodDate),
-        lt(users.createdAt, dateFilter)
-      ));
+      .where(isSuperadmin ?
+        and(
+          gte(users.createdAt, previousPeriodDate),
+          lt(users.createdAt, dateFilter)
+        ) :
+        and(
+          gte(users.createdAt, previousPeriodDate),
+          lt(users.createdAt, dateFilter),
+          eq(users.tenantId, userTenantId!)
+        ));
 
     const previousUsers = previousUsersResult?.count || 0;
     const usersChange = previousUsers > 0 ? ((newUsers - previousUsers) / previousUsers) * 100 : 0;
 
-    // Calculate churn rate (simplified - cancelled subscriptions from period-start cohort)
+    // Calculate churn rate (simplified - cancelled subscriptions from period-start cohort) - tenant-scoped
     const [cancelledSubscriptionsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        eq(subscriptions.status, 'cancelled'),
-        gte(subscriptions.updatedAt, dateFilter),
-        lt(subscriptions.createdAt, dateFilter) // Only count cancellations from period-start cohort
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, dateFilter),
+          lt(subscriptions.createdAt, dateFilter) // Only count cancellations from period-start cohort
+        ) :
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, dateFilter),
+          lt(subscriptions.createdAt, dateFilter),
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const cancelledSubscriptions = cancelledSubscriptionsResult?.count || 0;
     const churnRate = previousActiveSubs > 0 ? (cancelledSubscriptions / previousActiveSubs) * 100 : 0;
@@ -138,30 +179,43 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
     // Calculate CLV (simplified: ARPU / churn rate * 100)
     const clv = churnRate > 0 ? (arpu * 100) / churnRate : arpu * 36; // Default to 36 months if no churn
 
-    // Get revenue from billing history
+    // Get revenue from billing history (tenant-scoped)
     const revenueResult = await db
       .select({
         totalRevenue: sum(billingHistory.amount)
       })
       .from(billingHistory)
-      .where(and(
-        eq(billingHistory.status, 'paid'),
-        gte(billingHistory.createdAt, dateFilter)
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, dateFilter)
+        ) :
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, dateFilter),
+          eq(billingHistory.tenantId, userTenantId!)
+        ));
 
     const periodRevenue = revenueResult[0]?.totalRevenue || 0;
 
-    // Get previous period revenue for comparison
+    // Get previous period revenue for comparison (tenant-scoped)
     const previousRevenueResult = await db
       .select({
         totalRevenue: sum(billingHistory.amount)
       })
       .from(billingHistory)
-      .where(and(
-        eq(billingHistory.status, 'paid'),
-        gte(billingHistory.createdAt, previousPeriodDate),
-        lt(billingHistory.createdAt, dateFilter)
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, previousPeriodDate),
+          lt(billingHistory.createdAt, dateFilter)
+        ) :
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, previousPeriodDate),
+          lt(billingHistory.createdAt, dateFilter),
+          eq(billingHistory.tenantId, userTenantId!)
+        ));
 
     const previousRevenue = previousRevenueResult[0]?.totalRevenue || 0;
     const revenueChange = Number(previousRevenue) > 0 ? ((Number(periodRevenue) - Number(previousRevenue)) / Number(previousRevenue)) * 100 : 0;
@@ -172,28 +226,42 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
 
     // Calculate CLV change (simplified)
     
-    // Get previous period active subscriptions snapshot (at previousPeriodDate boundary) 
+    // Get previous period active subscriptions snapshot (at previousPeriodDate boundary) - tenant-scoped
     const [prevPeriodActiveSubsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        lt(subscriptions.createdAt, previousPeriodDate), // Created before previousPeriodDate
-        // Not cancelled before previousPeriodDate OR still active
-        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
-      ));
+      .where(isSuperadmin ?
+        and(
+          lt(subscriptions.createdAt, previousPeriodDate), // Created before previousPeriodDate
+          // Not cancelled before previousPeriodDate OR still active
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
+        ) :
+        and(
+          lt(subscriptions.createdAt, previousPeriodDate),
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`,
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const prevPeriodActiveSubs = prevPeriodActiveSubsResult?.count || 0;
     
-    // Previous period churn calculation
+    // Previous period churn calculation (tenant-scoped)
     const [prevCancelledResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        eq(subscriptions.status, 'cancelled'),
-        gte(subscriptions.updatedAt, previousPeriodDate),
-        lt(subscriptions.updatedAt, dateFilter),
-        lt(subscriptions.createdAt, previousPeriodDate) // Only count cancellations from previous period-start cohort
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, previousPeriodDate),
+          lt(subscriptions.updatedAt, dateFilter),
+          lt(subscriptions.createdAt, previousPeriodDate) // Only count cancellations from previous period-start cohort
+        ) :
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, previousPeriodDate),
+          lt(subscriptions.updatedAt, dateFilter),
+          lt(subscriptions.createdAt, previousPeriodDate),
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
     
     const prevCancelled = prevCancelledResult?.count || 0;
     const previousChurnRate = prevPeriodActiveSubs > 0 ? (prevCancelled / prevPeriodActiveSubs) * 100 : 0;
@@ -255,9 +323,13 @@ router.get('/metrics', requireAuth, requireSuperadmin, async (req, res) => {
   }
 });
 
-// Get user analytics
-router.get('/users', requireAuth, requireSuperadmin, async (req, res) => {
+// Get user analytics (tenant-scoped)
+router.get('/users', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const isSuperadmin = authReq.user?.role === 'superadmin';
+    const userTenantId = authReq.user?.tenantId;
+    
     const timeRange = req.query.timeRange as string || '30days';
     let dateFilter: Date;
     
@@ -278,24 +350,27 @@ router.get('/users', requireAuth, requireSuperadmin, async (req, res) => {
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Get user registration trends
+    // Get user registration trends (tenant-scoped)
     const userTrends = await db
       .select({
         date: sql<string>`DATE(${users.createdAt})`,
         count: count()
       })
       .from(users)
-      .where(gte(users.createdAt, dateFilter))
+      .where(isSuperadmin ?
+        gte(users.createdAt, dateFilter) :
+        and(gte(users.createdAt, dateFilter), eq(users.tenantId, userTenantId!)))
       .groupBy(sql`DATE(${users.createdAt})`)
       .orderBy(sql`DATE(${users.createdAt})`);
 
-    // Get user roles distribution
+    // Get user roles distribution (tenant-scoped)
     const roleDistribution = await db
       .select({
         role: users.role,
         count: count()
       })
       .from(users)
+      .where(isSuperadmin ? sql`true` : eq(users.tenantId, userTenantId!))
       .groupBy(users.role);
 
     res.json({
@@ -308,9 +383,13 @@ router.get('/users', requireAuth, requireSuperadmin, async (req, res) => {
   }
 });
 
-// Get subscription analytics
-router.get('/subscriptions', requireAuth, requireSuperadmin, async (req, res) => {
+// Get subscription analytics (tenant-scoped)
+router.get('/subscriptions', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const isSuperadmin = authReq.user?.role === 'superadmin';
+    const userTenantId = authReq.user?.tenantId;
+    
     const timeRange = req.query.timeRange as string || '30days';
     let dateFilter: Date;
     
@@ -331,18 +410,20 @@ router.get('/subscriptions', requireAuth, requireSuperadmin, async (req, res) =>
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Get subscription trends
+    // Get subscription trends (tenant-scoped)
     const subscriptionTrends = await db
       .select({
         date: sql<string>`DATE(${subscriptions.createdAt})`,
         count: count()
       })
       .from(subscriptions)
-      .where(gte(subscriptions.createdAt, dateFilter))
+      .where(isSuperadmin ?
+        gte(subscriptions.createdAt, dateFilter) :
+        and(gte(subscriptions.createdAt, dateFilter), eq(subscriptions.tenantId, userTenantId!)))
       .groupBy(sql`DATE(${subscriptions.createdAt})`)
       .orderBy(sql`DATE(${subscriptions.createdAt})`);
 
-    // Get plan distribution
+    // Get plan distribution (tenant-scoped)
     const planDistribution = await db
       .select({
         planName: subscriptionPlans.name,
@@ -351,16 +432,19 @@ router.get('/subscriptions', requireAuth, requireSuperadmin, async (req, res) =>
       })
       .from(subscriptions)
       .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(eq(subscriptions.status, 'active'))
+      .where(isSuperadmin ?
+        eq(subscriptions.status, 'active') :
+        and(eq(subscriptions.status, 'active'), eq(subscriptions.tenantId, userTenantId!)))
       .groupBy(subscriptionPlans.id, subscriptionPlans.name);
 
-    // Get status distribution
+    // Get status distribution (tenant-scoped)
     const statusDistribution = await db
       .select({
         status: subscriptions.status,
         count: count()
       })
       .from(subscriptions)
+      .where(isSuperadmin ? sql`true` : eq(subscriptions.tenantId, userTenantId!))
       .groupBy(subscriptions.status);
 
     res.json({
@@ -374,9 +458,13 @@ router.get('/subscriptions', requireAuth, requireSuperadmin, async (req, res) =>
   }
 });
 
-// Get revenue analytics
-router.get('/revenue', requireAuth, requireSuperadmin, async (req, res) => {
+// Get revenue analytics (tenant-scoped)
+router.get('/revenue', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const isSuperadmin = authReq.user?.role === 'superadmin';
+    const userTenantId = authReq.user?.tenantId;
+    
     const timeRange = req.query.timeRange as string || '30days';
     let dateFilter: Date;
     
@@ -397,21 +485,27 @@ router.get('/revenue', requireAuth, requireSuperadmin, async (req, res) => {
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Get revenue trends from billing history
+    // Get revenue trends from billing history (tenant-scoped)
     const revenueTrends = await db
       .select({
         date: sql<string>`DATE(${billingHistory.createdAt})`,
         revenue: sum(billingHistory.amount)
       })
       .from(billingHistory)
-      .where(and(
-        eq(billingHistory.status, 'paid'),
-        gte(billingHistory.createdAt, dateFilter)
-      ))
+      .where(isSuperadmin ?
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, dateFilter)
+        ) :
+        and(
+          eq(billingHistory.status, 'paid'),
+          gte(billingHistory.createdAt, dateFilter),
+          eq(billingHistory.tenantId, userTenantId!)
+        ))
       .groupBy(sql`DATE(${billingHistory.createdAt})`)
       .orderBy(sql`DATE(${billingHistory.createdAt})`);
 
-    // Get MRR trends (monthly recurring revenue)
+    // Get MRR trends (monthly recurring revenue) - tenant-scoped
     const mrrTrends = await db
       .select({
         month: sql<string>`DATE_TRUNC('month', ${subscriptions.createdAt})`,
@@ -419,11 +513,18 @@ router.get('/revenue', requireAuth, requireSuperadmin, async (req, res) => {
       })
       .from(subscriptions)
       .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(and(
-        eq(subscriptions.status, 'active'),
-        eq(subscriptionPlans.interval, 'monthly'),
-        gte(subscriptions.createdAt, dateFilter)
-      ))
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptionPlans.interval, 'monthly'),
+          gte(subscriptions.createdAt, dateFilter)
+        ) :
+        and(
+          eq(subscriptions.status, 'active'),
+          eq(subscriptionPlans.interval, 'monthly'),
+          gte(subscriptions.createdAt, dateFilter),
+          eq(subscriptions.tenantId, userTenantId!)
+        ))
       .groupBy(sql`DATE_TRUNC('month', ${subscriptions.createdAt})`)
       .orderBy(sql`DATE_TRUNC('month', ${subscriptions.createdAt})`);
 
@@ -437,9 +538,13 @@ router.get('/revenue', requireAuth, requireSuperadmin, async (req, res) => {
   }
 });
 
-// Get churn analysis
-router.get('/churn', requireAuth, requireSuperadmin, async (req, res) => {
+// Get churn analysis (tenant-scoped)
+router.get('/churn', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
+    const authReq = req as AuthenticatedRequest;
+    const isSuperadmin = authReq.user?.role === 'superadmin';
+    const userTenantId = authReq.user?.tenantId;
+    
     const timeRange = req.query.timeRange as string || '30days';
     let dateFilter: Date;
     
@@ -460,22 +565,30 @@ router.get('/churn', requireAuth, requireSuperadmin, async (req, res) => {
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Calculate current churn rate
+    // Calculate current churn rate (tenant-scoped)
     const [activeSubscriptionsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(eq(subscriptions.status, 'active'));
+      .where(isSuperadmin ?
+        eq(subscriptions.status, 'active') :
+        and(eq(subscriptions.status, 'active'), eq(subscriptions.tenantId, userTenantId!)));
 
     const activeSubscriptions = activeSubscriptionsResult?.count || 0;
 
-    // Get cancelled subscriptions in the period
+    // Get cancelled subscriptions in the period (tenant-scoped)
     const [cancelledSubscriptionsResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        eq(subscriptions.status, 'cancelled'),
-        gte(subscriptions.updatedAt, dateFilter)
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, dateFilter)
+        ) :
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, dateFilter),
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const cancelledSubscriptions = cancelledSubscriptionsResult?.count || 0;
 
@@ -483,27 +596,40 @@ router.get('/churn', requireAuth, requireSuperadmin, async (req, res) => {
     const totalPeriodCustomers = activeSubscriptions + cancelledSubscriptions;
     const churnRate = totalPeriodCustomers > 0 ? (cancelledSubscriptions / totalPeriodCustomers) * 100 : 0;
 
-    // Get previous period churn for comparison
+    // Get previous period churn for comparison (tenant-scoped)
     const periodLength = Date.now() - dateFilter.getTime();
     const previousPeriodDate = new Date(dateFilter.getTime() - periodLength);
     
     const [prevCancelledResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        eq(subscriptions.status, 'cancelled'),
-        gte(subscriptions.updatedAt, previousPeriodDate),
-        lt(subscriptions.updatedAt, dateFilter)
-      ));
+      .where(isSuperadmin ?
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, previousPeriodDate),
+          lt(subscriptions.updatedAt, dateFilter)
+        ) :
+        and(
+          eq(subscriptions.status, 'cancelled'),
+          gte(subscriptions.updatedAt, previousPeriodDate),
+          lt(subscriptions.updatedAt, dateFilter),
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const prevCancelled = prevCancelledResult?.count || 0;
     const [prevActiveResult] = await db
       .select({ count: count() })
       .from(subscriptions)
-      .where(and(
-        lt(subscriptions.createdAt, previousPeriodDate),
-        sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
-      ));
+      .where(isSuperadmin ?
+        and(
+          lt(subscriptions.createdAt, previousPeriodDate),
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`
+        ) :
+        and(
+          lt(subscriptions.createdAt, previousPeriodDate),
+          sql`(${subscriptions.status} != 'cancelled' OR ${subscriptions.updatedAt} > ${previousPeriodDate.toISOString()})`,
+          eq(subscriptions.tenantId, userTenantId!)
+        ));
 
     const prevActive = prevActiveResult?.count || 0;
     const prevTotalCustomers = prevActive + prevCancelled;
