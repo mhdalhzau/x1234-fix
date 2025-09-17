@@ -6,7 +6,7 @@ Backup database Customer Dashboard SaaS yang dibuat pada tanggal **17 September 
 
 ### Data yang Tersedia:
 - ✅ **users**: 1 user (superadmin)
-- ✅ **refresh_tokens**: 2 tokens aktif
+- ⭕ **refresh_tokens**: 0 records (dihapus untuk keamanan)
 - ⭕ **tenants**: 0 records (kosong)
 - ⭕ **outlets**: 0 records (kosong)
 - ⭕ **subscription_plans**: 0 records (kosong)
@@ -32,31 +32,27 @@ Backup database Customer Dashboard SaaS yang dibuat pada tanggal **17 September 
 - **Email**: admin@system.com
 - **Username**: superadmin
 - **Password**: superadmin123
-- **Role**: admin (level sistem)
+- **Role**: superadmin (level sistem)
 - **Status**: Active
 - **Akses**: System-wide access
 
 ## File Backup:
 
 - `users_data.sql` - Data user superadmin
-- `refresh_tokens_data.sql` - Data token refresh yang aktif
 - `schema_backup.sql` - Struktur lengkap database
 
 ## Cara Restore:
 
-### Import user data:
-```bash
-cat users_data.sql | psql $DATABASE_URL
-```
+⚠️ **PENTING**: Restore harus dilakukan berurutan!
 
-### Import tokens:
-```bash
-cat refresh_tokens_data.sql | psql $DATABASE_URL
-```
-
-### Import schema lengkap:
+### 1. Import schema terlebih dahulu:
 ```bash
 cat schema_backup.sql | psql $DATABASE_URL
+```
+
+### 2. Import user data:
+```bash
+cat users_data.sql | psql $DATABASE_URL
 ```
 
 ## Catatan Penting:
@@ -65,3 +61,4 @@ cat schema_backup.sql | psql $DATABASE_URL
 - Belum ada tenant/customer yang terdaftar
 - Sistem siap untuk onboarding customer pertama
 - Role hierarchy telah disederhanakan tanpa role 'admin' level tenant
+- Refresh tokens dihapus untuk keamanan - akan di-generate ulang saat login

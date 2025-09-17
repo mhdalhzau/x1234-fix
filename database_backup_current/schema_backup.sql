@@ -1,6 +1,9 @@
 -- Database Schema Backup - Customer Dashboard SaaS
 -- Generated: 17 September 2025
 
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Tenants table - business customers
 CREATE TABLE IF NOT EXISTS tenants (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

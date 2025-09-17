@@ -48,7 +48,7 @@
 - **Email**: admin@system.com
 - **Username**: superadmin  
 - **Password**: superadmin123
-- **Role**: admin (sistem level)
+- **Role**: superadmin (sistem level)
 
 ### JWT Configuration:
 - **Access Token**: 15 menit expiry
@@ -70,7 +70,7 @@
 
 ### Database Status Saat Ini:
 - ✅ **users**: 1 record (superadmin)
-- ✅ **refresh_tokens**: 2 records (active sessions)
+- ⭕ **refresh_tokens**: 0 records (dihapus untuk keamanan)
 - ⭕ **tenants**: 0 records (siap untuk customer pertama)
 - ⭕ **Semua tabel lain**: Kosong, siap untuk data
 
@@ -150,7 +150,7 @@ npm start
 
 ### Backup Location:
 - **Current**: `database_backup_current/`
-- **Contains**: Schema, user data, refresh tokens
+- **Contains**: Schema dan user data only; refresh tokens dikecualikan untuk keamanan
 
 ### Recovery Commands:
 ```bash
@@ -160,8 +160,7 @@ cat database_backup_current/schema_backup.sql | psql $DATABASE_URL
 # User data restore  
 cat database_backup_current/users_data.sql | psql $DATABASE_URL
 
-# Refresh tokens restore
-cat database_backup_current/refresh_tokens_data.sql | psql $DATABASE_URL
+# Note: Refresh tokens tidak di-backup untuk keamanan
 ```
 
 ## 🔧 Development Guidelines

@@ -1,6 +1,0 @@
--- Refresh Tokens Data Backup - 17 September 2025
--- Customer Dashboard SaaS
-
-INSERT INTO refresh_tokens (id, user_id, token, expires_at, created_at) VALUES
-('2312cabd-0558-41c2-a77d-3437d1b2d055'::uuid, '9519bbe5-f835-4e5e-9848-fde5dbbdae71'::uuid, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTE5YmJlNS1mODM1LTRlNWUtOTg0OC1mZGU1ZGJiZGFlNzEiLCJ0ZW5hbnRJZCI6bnVsbCwicm9sZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBzeXN0ZW0uY29tIiwiaWF0IjoxNzU4MDg5OTcxLCJleHAiOjE3NTg2OTQ3NzF9.mArt8eqItTD5RB3lNlyLC8CVHiUylrTXK6VGv3leMnI', '2025-09-24 06:19:31.82'::timestamp, '2025-09-17 06:19:31.831375'::timestamp),
-('b12673e4-25b1-4525-bb0f-731f99154dd6'::uuid, '9519bbe5-f835-4e5e-9848-fde5dbbdae71'::uuid, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTE5YmJlNS1mODM1LTRlNWUtOTg0OC1mZGU1ZGJiZGFlNzEiLCJ0ZW5hbnRJZCI6bnVsbCwicm9sZSI6ImFkbWluIiwiZW1haWwiOiJhZG1pbkBzeXN0ZW0uY29tIiwiaWF0IjoxNzU4MDkwMDIyLCJleHAiOjE3NTg2OTQ4MjJ9.pf2URP2WJ5GqsRKECeelnqyWrTQ7VSJklZDYK1KUAMQ', '2025-09-24 06:20:22.677'::timestamp, '2025-09-17 06:20:22.687766'::timestamp);
