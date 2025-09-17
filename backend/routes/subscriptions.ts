@@ -1,9 +1,16 @@
 import { Router } from 'express';
 import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
+import Stripe from 'stripe';
 import { db } from '../models/database.js';
-import { subscriptions, subscriptionPlans, billingHistory, tenants } from '../models/schema.js';
+import { subscriptions, subscriptionPlans, billingHistory, tenants, users } from '../models/schema.js';
 import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
+
+// Initialize Stripe with secret key
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('Missing required Stripe secret: STRIPE_SECRET_KEY');
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const router = Router();
 
@@ -48,12 +55,83 @@ router.get('/plans', requireAuth, async (req, res) => {
   }
 });
 
+// Create Stripe subscription intent (for frontend payment)
+router.post('/create-payment-intent', requireAuth, requireTenantBound, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  try {
+    const { planId } = req.body;
+    const userId = authReq.user!.userId;
+    const tenantId = authReq.user!.tenantId!;
+
+    // Get plan details
+    const [plan] = await db.select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, planId));
+
+    if (!plan) {
+      return res.status(404).json({ message: 'Subscription plan not found' });
+    }
+
+    // Get user details
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create or get Stripe customer
+    let customerId = user.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        name: user.username,
+        metadata: {
+          userId: user.id,
+          tenantId: tenantId,
+        },
+      });
+      customerId = customer.id;
+      
+      // Update user with Stripe customer ID
+      await db.update(users)
+        .set({ stripeCustomerId: customerId })
+        .where(eq(users.id, userId));
+    }
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(parseFloat(plan.price) * 100), // Convert to cents
+      currency: plan.currency.toLowerCase(),
+      customer: customerId,
+      metadata: {
+        planId: plan.id,
+        tenantId: tenantId,
+        userId: userId,
+      },
+      setup_future_usage: 'off_session',
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      planName: plan.name,
+      amount: plan.price,
+      currency: plan.currency,
+    });
+  } catch (error) {
+    console.error('Create payment intent error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Subscribe to a plan (owner only)
 const subscribeSchema = z.object({
   planId: z.string().uuid(),
+  paymentIntentId: z.string().optional(),
 });
 
-router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
+router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['tenant_owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = subscribeSchema.parse(req.body);
@@ -66,6 +144,23 @@ router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['owner']
 
     if (!plan) {
       return res.status(404).json({ message: 'Subscription plan not found' });
+    }
+
+    // REQUIRE payment verification - no free subscriptions
+    if (!data.paymentIntentId) {
+      return res.status(400).json({ message: 'Payment verification required' });
+    }
+
+    // Verify payment intent status
+    const paymentIntent = await stripe.paymentIntents.retrieve(data.paymentIntentId);
+    if (paymentIntent.status !== 'succeeded') {
+      return res.status(400).json({ message: 'Payment not completed or verified' });
+    }
+
+    // Verify payment amount matches plan price
+    const expectedAmount = Math.round(parseFloat(plan.price) * 100);
+    if (paymentIntent.amount !== expectedAmount) {
+      return res.status(400).json({ message: 'Payment amount mismatch' });
     }
 
     // Cancel any existing active subscription
@@ -99,8 +194,9 @@ router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['owner']
       subscriptionId: newSubscription.id,
       amount: plan.price,
       currency: plan.currency,
-      paymentMethod: 'pending',
-      status: 'pending',
+      paymentMethod: data.paymentIntentId ? 'stripe' : 'manual',
+      status: data.paymentIntentId ? 'paid' : 'pending',
+      paidAt: data.paymentIntentId ? new Date() : null,
       description: `Subscription to ${plan.name} plan`,
     });
 
@@ -118,7 +214,7 @@ router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['owner']
 });
 
 // Get billing history
-router.get('/billing', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
+router.get('/billing', requireAuth, requireTenantBound, requireRole(['tenant_owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const tenantId = authReq.user!.tenantId!;
@@ -141,7 +237,7 @@ const updatePaymentSchema = z.object({
   paymentMethod: z.string().optional(),
 });
 
-router.post('/billing/update-payment', requireAuth, requireRole(['owner']), async (req, res) => {
+router.post('/billing/update-payment', requireAuth, requireTenantBound, requireRole(['tenant_owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = updatePaymentSchema.parse(req.body);

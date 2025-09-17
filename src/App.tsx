@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage';
 import OutletsPage from './pages/OutletsPage';
 import BillingPage from './pages/BillingPage';
 import AdminPage from './pages/AdminPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 // Subscription pages
 import PlansPage from './pages/subscriptions/PlansPage';
@@ -158,6 +159,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PlansPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/checkout"
+        element={
+          <ProtectedRoute>
+            <CheckoutPage />
           </ProtectedRoute>
         }
       />

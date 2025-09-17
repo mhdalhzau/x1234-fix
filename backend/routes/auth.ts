@@ -5,7 +5,7 @@ import { db } from '../models/database.js';
 import { users, tenants, refreshTokens } from '../models/schema.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } from '../utils/jwt.js';
-import { sendWelcomeEmail, sendActivationEmail, generateOTP } from '../utils/email.js';
+import { sendWelcomeEmail, sendActivationEmail, generateOTP, sendPasswordResetEmail, send2FACodeEmail } from '../utils/email.js';
 
 const router = Router();
 
@@ -29,6 +29,27 @@ const loginSchema = z.object({
 // Refresh token schema
 const refreshTokenSchema = z.object({
   refreshToken: z.string(),
+});
+
+// Forgot password schema
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+// Reset password schema
+const resetPasswordSchema = z.object({
+  token: z.string(),
+  password: z.string().min(6),
+});
+
+// 2FA schemas
+const send2FASchema = z.object({
+  email: z.string().email(),
+});
+
+const verify2FASchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(6),
 });
 
 // Register new tenant with owner account
@@ -241,6 +262,193 @@ router.post('/logout', async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Forgot password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const data = forgotPasswordSchema.parse(req.body);
+
+    // Find user by email
+    const [foundUser] = await db.select().from(users).where(eq(users.email, data.email));
+
+    if (!foundUser) {
+      // Don't reveal if email exists, but log the attempt
+      console.log('Password reset requested for non-existent email:', data.email);
+      return res.json({ message: 'If the email exists, a reset link has been sent' });
+    }
+
+    // Generate reset token
+    const resetToken = generateRandomToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    // Store reset token (reuse refresh_tokens table with different purpose)
+    await db.insert(refreshTokens).values({
+      userId: foundUser.id,
+      token: `reset_${resetToken}`,
+      expiresAt: expiresAt,
+    });
+
+    // Send reset email
+    await sendPasswordResetEmail(foundUser.email, resetToken);
+
+    res.json({ message: 'If the email exists, a reset link has been sent' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Invalid input data', errors: error.errors });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Reset password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const data = resetPasswordSchema.parse(req.body);
+
+    // Find reset token
+    const [storedToken] = await db.select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token, `reset_${data.token}`));
+
+    if (!storedToken) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    // Check if token is expired
+    if (storedToken.expiresAt < new Date()) {
+      await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+      return res.status(400).json({ message: 'Reset token has expired' });
+    }
+
+    // Hash new password
+    const passwordHash = await hashPassword(data.password);
+
+    // Update user password
+    await db.update(users)
+      .set({ 
+        password: passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, storedToken.userId));
+
+    // Delete the used reset token
+    await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Invalid input data', errors: error.errors });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Send 2FA code
+router.post('/send-2fa', async (req, res) => {
+  try {
+    const data = send2FASchema.parse(req.body);
+
+    // Find user by email
+    const [foundUser] = await db.select().from(users).where(eq(users.email, data.email));
+
+    if (!foundUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate 6-digit OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    // Store 2FA code (reuse refresh_tokens table with different purpose)
+    await db.insert(refreshTokens).values({
+      userId: foundUser.id,
+      token: `2fa_${otpCode}`,
+      expiresAt: expiresAt,
+    });
+
+    // Send 2FA email
+    await send2FACodeEmail(foundUser.email, otpCode);
+
+    res.json({ message: '2FA code sent successfully' });
+  } catch (error) {
+    console.error('Send 2FA error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Invalid input data', errors: error.errors });
+    }
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Verify 2FA code
+router.post('/verify-2fa', async (req, res) => {
+  try {
+    const data = verify2FASchema.parse(req.body);
+
+    // Find user by email
+    const [foundUser] = await db.select().from(users).where(eq(users.email, data.email));
+
+    if (!foundUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Find 2FA code
+    const [storedToken] = await db.select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token, `2fa_${data.code}`));
+
+    if (!storedToken || storedToken.userId !== foundUser.id) {
+      return res.status(400).json({ message: 'Invalid 2FA code' });
+    }
+
+    // Check if code is expired
+    if (storedToken.expiresAt < new Date()) {
+      await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+      return res.status(400).json({ message: '2FA code has expired' });
+    }
+
+    // Delete the used 2FA code
+    await db.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+
+    // Generate tokens for successful 2FA
+    const payload = {
+      userId: foundUser.id,
+      tenantId: foundUser.role === 'superadmin' ? null : foundUser.tenantId,
+      role: foundUser.role,
+      email: foundUser.email,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    // Store refresh token
+    await db.insert(refreshTokens).values({
+      userId: foundUser.id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+
+    res.json({
+      message: '2FA verification successful',
+      user: {
+        id: foundUser.id,
+        username: foundUser.username,
+        email: foundUser.email,
+        role: foundUser.role,
+      },
+      tenant: foundUser.role === 'superadmin' ? null : foundUser.tenantId,
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error('Verify 2FA error:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: 'Invalid input data', errors: error.errors });
+    }
     res.status(500).json({ message: 'Internal server error' });
   }
 });
