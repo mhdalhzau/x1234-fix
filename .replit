@@ -17,23 +17,11 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Backend"
+args = "Frontend"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Frontend"
-
-[[workflows.workflow]]
-name = "Backend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd backend && JWT_SECRET=\"d033c6cd1c40612e521cefe0c6e22541\" JWT_REFRESH_SECRET=\"2a9622040fcabb746cbe3bf60a9b2ec0\" STRIPE_SECRET_KEY=\"sk_test_51S8GRjFpdXOTnxbslFQlmh7M2g1igjHGrBYzz7f4fqgJ4NWhy0QMgccxWNw2gtIrfYFg8hZ6BQcQ4kuZ3CyCoGx200wgTzjDom\" STRIPE_PUBLISHABLE_KEY=\"pk_test_51S8GRjFpdXOTnxbsjj29OQTCFFcfncVyCpvG3NwswkU1S3hv3WPtFNa74GI8MwoBULM97EkW6H8rgCoUSgt6mhnT00bWgSwpy3\" NODE_ENV=development npm run dev"
-waitForPort = 8000
-
-[workflows.workflow.metadata]
-outputType = "console"
+args = "Backend"
 
 [[workflows.workflow]]
 name = "Frontend"
@@ -41,19 +29,27 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "VITE_STRIPE_PUBLIC_KEY=\"pk_test_51S8GRjFpdXOTnxbsjj29OQTCFFcfncVyCpvG3NwswkU1S3hv3WPtFNa74GI8MwoBULM97EkW6H8rgCoUSgt6mhnT00bWgSwpy3\" npm run dev"
+args = "npm run dev"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
 
+[[workflows.workflow]]
+name = "Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && JWT_SECRET=\"d033c6cd1c40612e521cefe0c6e22541\" JWT_REFRESH_SECRET=\"2a9622040fcabb746cbe3bf60a9b2ec0\" STRIPE_SECRET_KEY=\"sk_test_51S8GRjFpdXOTnxbslFQlmh7M2g1igjHGrBYzz7f4fqgJ4NWhy0QMgccxWNw2gtIrfYFg8hZ6BQcQ4kuZ3CyCoGx200wgTzjDom\" NODE_ENV=development npm run dev"
+waitForPort = 8000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 36785
-externalPort = 3001
 
 [[ports]]
 localPort = 37183
@@ -66,6 +62,10 @@ externalPort = 3003
 [[ports]]
 localPort = 45313
 externalPort = 5173
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
 
 [deployment]
 deploymentTarget = "autoscale"
