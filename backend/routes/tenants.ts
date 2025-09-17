@@ -3,7 +3,7 @@ import { eq, desc, and, count } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { tenants, users, outlets, subscriptions, modules, tenantModules } from '../models/schema.js';
-import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -24,9 +24,10 @@ router.get('/me', requireAuth, async (req, res) => {
       });
     }
 
+    const tenantId = authReq.user!.tenantId!;
     const [tenant] = await db.select()
       .from(tenants)
-      .where(eq(tenants.id, authReq.user!.tenantId));
+      .where(eq(tenants.id, tenantId));
 
     if (!tenant) {
       return res.status(404).json({ message: 'Tenant not found' });
@@ -56,17 +57,18 @@ const updateTenantSchema = z.object({
   address: z.string().optional(),
 });
 
-router.put('/me', requireAuth, requireRole(['owner']), async (req, res) => {
+router.put('/me', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = updateTenantSchema.parse(req.body);
+    const tenantId = authReq.user!.tenantId!;
 
     const [updatedTenant] = await db.update(tenants)
       .set({
         ...data,
         updatedAt: new Date(),
       })
-      .where(eq(tenants.id, authReq.user!.tenantId))
+      .where(eq(tenants.id, tenantId))
       .returning();
 
     res.json(updatedTenant);
@@ -80,16 +82,19 @@ router.put('/me', requireAuth, requireRole(['owner']), async (req, res) => {
 });
 
 // Get tenant modules
-router.get('/modules', requireAuth, async (req, res) => {
+router.get('/modules', requireAuth, requireTenantBound, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
+    const tenantId = authReq.user!.tenantId!;
     const tenantModulesList = await db.select({
       module: modules,
       tenantModule: tenantModules,
     })
     .from(modules)
-    .leftJoin(tenantModules, eq(modules.id, tenantModules.moduleId))
-    .where(eq(tenantModules.tenantId, authReq.user!.tenantId));
+    .leftJoin(tenantModules, and(
+      eq(modules.id, tenantModules.moduleId),
+      eq(tenantModules.tenantId, tenantId)
+    ));
 
     res.json(tenantModulesList);
   } catch (error) {
@@ -104,7 +109,7 @@ const toggleModuleSchema = z.object({
   isEnabled: z.boolean(),
 });
 
-router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req, res) => {
+router.post('/modules/toggle', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = toggleModuleSchema.parse(req.body);
@@ -116,10 +121,11 @@ router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req, 
     }
 
     // Update or insert tenant module
+    const tenantId = authReq.user!.tenantId!;
     const existingTenantModule = await db.select()
       .from(tenantModules)
       .where(and(
-        eq(tenantModules.tenantId, authReq.user!.tenantId),
+        eq(tenantModules.tenantId, tenantId),
         eq(tenantModules.moduleId, data.moduleId)
       ));
 
@@ -131,12 +137,12 @@ router.post('/modules/toggle', requireAuth, requireRole(['owner']), async (req, 
           enabledBy: authReq.user!.userId,
         })
         .where(and(
-          eq(tenantModules.tenantId, authReq.user!.tenantId),
+          eq(tenantModules.tenantId, tenantId),
           eq(tenantModules.moduleId, data.moduleId)
         ));
     } else {
       await db.insert(tenantModules).values({
-        tenantId: authReq.user!.tenantId,
+        tenantId: tenantId,
         moduleId: data.moduleId,
         isEnabled: data.isEnabled,
         enabledBy: authReq.user!.userId,

@@ -3,7 +3,7 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { outlets, tenants } from '../models/schema.js';
-import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -17,9 +17,10 @@ router.get('/', requireAuth, async (req, res) => {
       return res.json([]);
     }
     
+    const tenantId = authReq.user!.tenantId!;
     const tenantOutlets = await db.select()
       .from(outlets)
-      .where(eq(outlets.tenantId, authReq.user!.tenantId));
+      .where(eq(outlets.tenantId, tenantId));
 
     res.json(tenantOutlets);
   } catch (error) {
@@ -29,16 +30,17 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Get single outlet
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requireTenantBound, async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
 
+    const tenantId = authReq.user!.tenantId!;
     const [outlet] = await db.select()
       .from(outlets)
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, authReq.user!.tenantId)
+        eq(outlets.tenantId, tenantId)
       ));
 
     if (!outlet) {
@@ -59,15 +61,16 @@ const createOutletSchema = z.object({
   phone: z.string().optional(),
 });
 
-router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req, res) => {
+router.post('/', requireAuth, requireTenantBound, requireRole(['owner', 'manager']), async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const data = createOutletSchema.parse(req.body);
 
     // Check tenant outlet limits
+    const tenantId = authReq.user!.tenantId!;
     const [tenant] = await db.select()
       .from(tenants)
-      .where(eq(tenants.id, authReq.user!.tenantId));
+      .where(eq(tenants.id, tenantId));
 
     if (!tenant) {
       return res.status(404).json({ message: 'Tenant not found' });
@@ -76,7 +79,7 @@ router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req, res
     // Check current outlet count
     const currentOutlets = await db.select()
       .from(outlets)
-      .where(eq(outlets.tenantId, authReq.user!.tenantId));
+      .where(eq(outlets.tenantId, tenantId));
 
     if (currentOutlets.length >= tenant.maxOutlets) {
       return res.status(400).json({ 
@@ -86,7 +89,7 @@ router.post('/', requireAuth, requireRole(['owner', 'manager']), async (req, res
 
     // Create outlet
     const [newOutlet] = await db.insert(outlets).values({
-      tenantId: authReq.user!.tenantId,
+      tenantId: tenantId,
       name: data.name,
       address: data.address,
       phone: data.phone,

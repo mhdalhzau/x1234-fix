@@ -3,21 +3,22 @@ import { eq, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { subscriptions, subscriptionPlans, billingHistory, tenants } from '../models/schema.js';
-import { requireAuth, requireRole, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
 // Get current subscription
-router.get('/current', requireAuth, async (req, res) => {
+router.get('/current', requireAuth, requireTenantBound, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
+    const tenantId = authReq.user!.tenantId!;
     const [currentSubscription] = await db.select({
       subscription: subscriptions,
       plan: subscriptionPlans,
     })
     .from(subscriptions)
     .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .where(eq(subscriptions.tenantId, authReq.user!.tenantId))
+    .where(eq(subscriptions.tenantId, tenantId))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
 

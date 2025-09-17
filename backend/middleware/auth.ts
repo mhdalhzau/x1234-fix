@@ -65,3 +65,12 @@ export function requireSameTenant(req: Request, res: Response, next: NextFunctio
 
   next();
 }
+
+// Require tenant-bound user (not admin)
+export function requireTenantBound(req: Request, res: Response, next: NextFunction) {
+  const authReq = req as AuthenticatedRequest;
+  if (!authReq.user || !authReq.user.tenantId) {
+    return res.status(403).json({ message: 'Access denied: tenant required' });
+  }
+  next();
+}
