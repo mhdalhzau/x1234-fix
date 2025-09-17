@@ -17,11 +17,44 @@ const PORT = process.env.PORT || 8000;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5000';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Middleware
-app.use(cors({
-  origin: FRONTEND_URL,
+// Configure CORS for production and development
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, allow specific origins
+    if (NODE_ENV === 'production') {
+      const allowedOrigins = [
+        FRONTEND_URL,
+        process.env.REPLIT_URL,
+        process.env.REPL_URL,
+        // Add other production domains as needed
+      ].filter(Boolean);
+      
+      if (allowedOrigins.some(allowedOrigin => origin.startsWith(allowedOrigin))) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'), false);
+    }
+    
+    // In development, be more lenient
+    if (origin.startsWith('http://localhost') || 
+        origin.startsWith('https://localhost') ||
+        origin.includes('.replit.') ||
+        origin === FRONTEND_URL) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+// Middleware
+app.use(cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
