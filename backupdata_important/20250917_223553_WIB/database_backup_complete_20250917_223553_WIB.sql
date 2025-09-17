@@ -2,8 +2,32 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 16.9
+-- Dumped from database version 16.9 (02a153c)
 -- Dumped by pg_dump version 17.5
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+DROP DATABASE IF EXISTS neondb;
+--
+-- Name: neondb; Type: DATABASE; Schema: -; Owner: neondb_owner
+--
+
+CREATE DATABASE neondb WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'C.UTF-8';
+
+
+ALTER DATABASE neondb OWNER TO neondb_owner;
+
+\connect neondb
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22,7 +46,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: billing_history; Type: TABLE; Schema: public; Owner: postgres
+-- Name: billing_history; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.billing_history (
@@ -40,10 +64,10 @@ CREATE TABLE public.billing_history (
 );
 
 
-ALTER TABLE public.billing_history OWNER TO postgres;
+ALTER TABLE public.billing_history OWNER TO neondb_owner;
 
 --
--- Name: blog_posts; Type: TABLE; Schema: public; Owner: postgres
+-- Name: blog_posts; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.blog_posts (
@@ -63,10 +87,10 @@ CREATE TABLE public.blog_posts (
 );
 
 
-ALTER TABLE public.blog_posts OWNER TO postgres;
+ALTER TABLE public.blog_posts OWNER TO neondb_owner;
 
 --
--- Name: faqs; Type: TABLE; Schema: public; Owner: postgres
+-- Name: faqs; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.faqs (
@@ -83,10 +107,10 @@ CREATE TABLE public.faqs (
 );
 
 
-ALTER TABLE public.faqs OWNER TO postgres;
+ALTER TABLE public.faqs OWNER TO neondb_owner;
 
 --
--- Name: feature_votes; Type: TABLE; Schema: public; Owner: postgres
+-- Name: feature_votes; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.feature_votes (
@@ -99,10 +123,10 @@ CREATE TABLE public.feature_votes (
 );
 
 
-ALTER TABLE public.feature_votes OWNER TO postgres;
+ALTER TABLE public.feature_votes OWNER TO neondb_owner;
 
 --
--- Name: modules; Type: TABLE; Schema: public; Owner: postgres
+-- Name: modules; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.modules (
@@ -115,10 +139,10 @@ CREATE TABLE public.modules (
 );
 
 
-ALTER TABLE public.modules OWNER TO postgres;
+ALTER TABLE public.modules OWNER TO neondb_owner;
 
 --
--- Name: outlets; Type: TABLE; Schema: public; Owner: postgres
+-- Name: outlets; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.outlets (
@@ -134,10 +158,10 @@ CREATE TABLE public.outlets (
 );
 
 
-ALTER TABLE public.outlets OWNER TO postgres;
+ALTER TABLE public.outlets OWNER TO neondb_owner;
 
 --
--- Name: refresh_tokens; Type: TABLE; Schema: public; Owner: postgres
+-- Name: refresh_tokens; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.refresh_tokens (
@@ -149,10 +173,10 @@ CREATE TABLE public.refresh_tokens (
 );
 
 
-ALTER TABLE public.refresh_tokens OWNER TO postgres;
+ALTER TABLE public.refresh_tokens OWNER TO neondb_owner;
 
 --
--- Name: roadmap_features; Type: TABLE; Schema: public; Owner: postgres
+-- Name: roadmap_features; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.roadmap_features (
@@ -170,10 +194,10 @@ CREATE TABLE public.roadmap_features (
 );
 
 
-ALTER TABLE public.roadmap_features OWNER TO postgres;
+ALTER TABLE public.roadmap_features OWNER TO neondb_owner;
 
 --
--- Name: subscription_plans; Type: TABLE; Schema: public; Owner: postgres
+-- Name: subscription_plans; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.subscription_plans (
@@ -191,10 +215,10 @@ CREATE TABLE public.subscription_plans (
 );
 
 
-ALTER TABLE public.subscription_plans OWNER TO postgres;
+ALTER TABLE public.subscription_plans OWNER TO neondb_owner;
 
 --
--- Name: subscriptions; Type: TABLE; Schema: public; Owner: postgres
+-- Name: subscriptions; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.subscriptions (
@@ -211,10 +235,10 @@ CREATE TABLE public.subscriptions (
 );
 
 
-ALTER TABLE public.subscriptions OWNER TO postgres;
+ALTER TABLE public.subscriptions OWNER TO neondb_owner;
 
 --
--- Name: tenant_modules; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tenant_modules; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.tenant_modules (
@@ -226,10 +250,10 @@ CREATE TABLE public.tenant_modules (
 );
 
 
-ALTER TABLE public.tenant_modules OWNER TO postgres;
+ALTER TABLE public.tenant_modules OWNER TO neondb_owner;
 
 --
--- Name: tenants; Type: TABLE; Schema: public; Owner: postgres
+-- Name: tenants; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.tenants (
@@ -248,10 +272,10 @@ CREATE TABLE public.tenants (
 );
 
 
-ALTER TABLE public.tenants OWNER TO postgres;
+ALTER TABLE public.tenants OWNER TO neondb_owner;
 
 --
--- Name: testimonials; Type: TABLE; Schema: public; Owner: postgres
+-- Name: testimonials; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.testimonials (
@@ -270,10 +294,10 @@ CREATE TABLE public.testimonials (
 );
 
 
-ALTER TABLE public.testimonials OWNER TO postgres;
+ALTER TABLE public.testimonials OWNER TO neondb_owner;
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: postgres
+-- Name: users; Type: TABLE; Schema: public; Owner: neondb_owner
 --
 
 CREATE TABLE public.users (
@@ -292,10 +316,10 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.users OWNER TO neondb_owner;
 
 --
--- Data for Name: billing_history; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: billing_history; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.billing_history (id, tenant_id, subscription_id, stripe_invoice_id, amount, currency, payment_method, status, paid_at, description, created_at) FROM stdin;
@@ -303,7 +327,7 @@ COPY public.billing_history (id, tenant_id, subscription_id, stripe_invoice_id, 
 
 
 --
--- Data for Name: blog_posts; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: blog_posts; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.blog_posts (id, title, excerpt, content, author, publish_date, status, views, category, tags, created_by, created_at, updated_at) FROM stdin;
@@ -311,7 +335,7 @@ COPY public.blog_posts (id, title, excerpt, content, author, publish_date, statu
 
 
 --
--- Data for Name: faqs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: faqs; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.faqs (id, question, answer, category, is_published, "order", views, created_by, created_at, updated_at) FROM stdin;
@@ -319,7 +343,7 @@ COPY public.faqs (id, question, answer, category, is_published, "order", views, 
 
 
 --
--- Data for Name: feature_votes; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: feature_votes; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.feature_votes (id, feature_id, user_id, ip_address, user_agent, created_at) FROM stdin;
@@ -327,7 +351,7 @@ COPY public.feature_votes (id, feature_id, user_id, ip_address, user_agent, crea
 
 
 --
--- Data for Name: modules; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: modules; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.modules (id, name, display_name, description, is_default, created_at) FROM stdin;
@@ -339,7 +363,7 @@ c77361a7-ac87-4c48-9420-513c645a0d8b	loyalty	Loyalty Program	Customer loyalty an
 
 
 --
--- Data for Name: outlets; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: outlets; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.outlets (id, tenant_id, name, address, phone, is_active, created_by, created_at, updated_at) FROM stdin;
@@ -347,7 +371,7 @@ COPY public.outlets (id, tenant_id, name, address, phone, is_active, created_by,
 
 
 --
--- Data for Name: refresh_tokens; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: refresh_tokens; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.refresh_tokens (id, user_id, token, expires_at, created_at) FROM stdin;
@@ -358,11 +382,14 @@ COPY public.refresh_tokens (id, user_id, token, expires_at, created_at) FROM std
 d6fef239-a742-4f31-b7ad-509386a1b459	38477644-22ba-4bfe-aa31-82068307b9ed	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzODQ3NzY0NC0yMmJhLTRiZmUtYWEzMS04MjA2ODMwN2I5ZWQiLCJ0ZW5hbnRJZCI6IjZiNmNhYWFmLWEzNGUtNDg1OS05NWMzLWM3YjMwZWQxOGRlMSIsInJvbGUiOiJzdGFmZiIsImVtYWlsIjoiYWRtaW5Ac3RhZmYuY29tIiwiaWF0IjoxNzU4MTQyMDQ3LCJleHAiOjE3NTg3NDY4NDd9.yRWWXB8l3VVUPinpEnZj_ThH0yYtFbnftwdr7M-lBwU	2025-09-24 20:47:27.009	2025-09-17 20:47:27.009958
 b3039b79-0fd6-4f77-92de-e15ef9c9724a	9519bbe5-f835-4e5e-9848-fde5dbbdae71	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTE5YmJlNS1mODM1LTRlNWUtOTg0OC1mZGU1ZGJiZGFlNzEiLCJ0ZW5hbnRJZCI6bnVsbCwicm9sZSI6InN1cGVyYWRtaW4iLCJlbWFpbCI6ImFkbWluQHN5c3RlbS5jb20iLCJpYXQiOjE3NTgxNDIxNjAsImV4cCI6MTc1ODc0Njk2MH0.z_2ncdQPOsRJn7SKVmUNYGoKexZ2ZRWJKEei-Y4FpsQ	2025-09-24 20:49:20.053	2025-09-17 20:49:20.053874
 78d7a19d-cf37-4a75-9d62-684d21f4def4	9519bbe5-f835-4e5e-9848-fde5dbbdae71	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTE5YmJlNS1mODM1LTRlNWUtOTg0OC1mZGU1ZGJiZGFlNzEiLCJ0ZW5hbnRJZCI6bnVsbCwicm9sZSI6InN1cGVyYWRtaW4iLCJlbWFpbCI6ImFkbWluQHN5c3RlbS5jb20iLCJpYXQiOjE3NTgxNDIyMDksImV4cCI6MTc1ODc0NzAwOX0.D0EWgjF3Dyzottoj3zAWrnbQDGfPdQMe_7FMq--km7w	2025-09-24 20:50:09.629	2025-09-17 20:50:09.629943
+88b08792-cdd1-42c3-a467-d27014488c6f	9519bbe5-f835-4e5e-9848-fde5dbbdae71	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NTE5YmJlNS1mODM1LTRlNWUtOTg0OC1mZGU1ZGJiZGFlNzEiLCJ0ZW5hbnRJZCI6bnVsbCwicm9sZSI6InN1cGVyYWRtaW4iLCJlbWFpbCI6ImFkbWluQHN5c3RlbS5jb20iLCJpYXQiOjE3NTgxNDg0NjMsImV4cCI6MTc1ODc1MzI2M30.ciSyL6EsPYWiRpTbUcjyxR4tLlbQ7o-IjPlwGjwH4s4	2025-09-24 22:34:23.069	2025-09-17 22:34:23.100257
+6a82cd35-2078-4652-be87-d38a036ac937	236b15ae-5c76-403d-bd13-c3fccac7580c	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyMzZiMTVhZS01Yzc2LTQwM2QtYmQxMy1jM2ZjY2FjNzU4MGMiLCJ0ZW5hbnRJZCI6IjZiNmNhYWFmLWEzNGUtNDg1OS05NWMzLWM3YjMwZWQxOGRlMSIsInJvbGUiOiJ0ZW5hbnRfb3duZXIiLCJlbWFpbCI6ImFkbWluQG93bmVyLmNvbSIsImlhdCI6MTc1ODE0ODQ2MywiZXhwIjoxNzU4NzUzMjYzfQ.kecMBZBmE_kkYM5_ROzzwI5Iut-TIF3aK60uRnSVx0Q	2025-09-24 22:34:23.618	2025-09-17 22:34:23.648676
+0468dbad-1685-40b9-817f-34751f3a2b14	38477644-22ba-4bfe-aa31-82068307b9ed	eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIzODQ3NzY0NC0yMmJhLTRiZmUtYWEzMS04MjA2ODMwN2I5ZWQiLCJ0ZW5hbnRJZCI6IjZiNmNhYWFmLWEzNGUtNDg1OS05NWMzLWM3YjMwZWQxOGRlMSIsInJvbGUiOiJzdGFmZiIsImVtYWlsIjoiYWRtaW5Ac3RhZmYuY29tIiwiaWF0IjoxNzU4MTQ4NDY0LCJleHAiOjE3NTg3NTMyNjR9.9bQQKRO_Slp7v6xrzm70YrjvZPQ7lR_Cux-SHcWc04M	2025-09-24 22:34:24.129	2025-09-17 22:34:24.160878
 \.
 
 
 --
--- Data for Name: roadmap_features; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: roadmap_features; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.roadmap_features (id, title, description, category, status, priority, estimated_quarter, completed_at, created_by, created_at, updated_at) FROM stdin;
@@ -370,7 +397,7 @@ COPY public.roadmap_features (id, title, description, category, status, priority
 
 
 --
--- Data for Name: subscription_plans; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: subscription_plans; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.subscription_plans (id, name, description, price, currency, "interval", max_outlets, max_users, features, is_active, created_at) FROM stdin;
@@ -381,7 +408,7 @@ d7efc3fc-26e9-47e5-a3e7-5235a8256c6f	Enterprise	For large businesses	1000000.00	
 
 
 --
--- Data for Name: subscriptions; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: subscriptions; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.subscriptions (id, tenant_id, plan_id, stripe_subscription_id, status, start_date, end_date, auto_renew, created_at, updated_at) FROM stdin;
@@ -389,7 +416,7 @@ COPY public.subscriptions (id, tenant_id, plan_id, stripe_subscription_id, statu
 
 
 --
--- Data for Name: tenant_modules; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: tenant_modules; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.tenant_modules (tenant_id, module_id, is_enabled, enabled_at, enabled_by) FROM stdin;
@@ -397,7 +424,7 @@ COPY public.tenant_modules (tenant_id, module_id, is_enabled, enabled_at, enable
 
 
 --
--- Data for Name: tenants; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: tenants; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.tenants (id, business_name, email, phone, address, status, trial_ends_at, subscription_id, stripe_customer_id, max_outlets, created_at, updated_at) FROM stdin;
@@ -406,7 +433,7 @@ COPY public.tenants (id, business_name, email, phone, address, status, trial_end
 
 
 --
--- Data for Name: testimonials; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: testimonials; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.testimonials (id, customer_name, customer_title, customer_company, testimonial, rating, is_published, is_featured, avatar_url, created_by, created_at, updated_at) FROM stdin;
@@ -414,7 +441,7 @@ COPY public.testimonials (id, customer_name, customer_title, customer_company, t
 
 
 --
--- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: postgres
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: neondb_owner
 --
 
 COPY public.users (id, tenant_id, username, email, password_hash, role, is_active, last_login_at, stripe_customer_id, stripe_subscription_id, created_at, updated_at) FROM stdin;
@@ -425,7 +452,7 @@ COPY public.users (id, tenant_id, username, email, password_hash, role, is_activ
 
 
 --
--- Name: billing_history billing_history_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: billing_history billing_history_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.billing_history
@@ -433,7 +460,7 @@ ALTER TABLE ONLY public.billing_history
 
 
 --
--- Name: billing_history billing_history_stripe_invoice_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: billing_history billing_history_stripe_invoice_id_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.billing_history
@@ -441,7 +468,7 @@ ALTER TABLE ONLY public.billing_history
 
 
 --
--- Name: blog_posts blog_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: blog_posts blog_posts_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.blog_posts
@@ -449,7 +476,7 @@ ALTER TABLE ONLY public.blog_posts
 
 
 --
--- Name: faqs faqs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: faqs faqs_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.faqs
@@ -457,7 +484,7 @@ ALTER TABLE ONLY public.faqs
 
 
 --
--- Name: feature_votes feature_votes_feature_id_user_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_votes feature_votes_feature_id_user_id_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.feature_votes
@@ -465,7 +492,7 @@ ALTER TABLE ONLY public.feature_votes
 
 
 --
--- Name: feature_votes feature_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_votes feature_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.feature_votes
@@ -473,7 +500,7 @@ ALTER TABLE ONLY public.feature_votes
 
 
 --
--- Name: modules modules_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: modules modules_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.modules
@@ -481,7 +508,7 @@ ALTER TABLE ONLY public.modules
 
 
 --
--- Name: outlets outlets_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: outlets outlets_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.outlets
@@ -489,7 +516,7 @@ ALTER TABLE ONLY public.outlets
 
 
 --
--- Name: refresh_tokens refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: refresh_tokens refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.refresh_tokens
@@ -497,7 +524,7 @@ ALTER TABLE ONLY public.refresh_tokens
 
 
 --
--- Name: refresh_tokens refresh_tokens_token_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: refresh_tokens refresh_tokens_token_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.refresh_tokens
@@ -505,7 +532,7 @@ ALTER TABLE ONLY public.refresh_tokens
 
 
 --
--- Name: roadmap_features roadmap_features_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roadmap_features roadmap_features_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.roadmap_features
@@ -513,7 +540,7 @@ ALTER TABLE ONLY public.roadmap_features
 
 
 --
--- Name: subscription_plans subscription_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subscription_plans subscription_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.subscription_plans
@@ -521,7 +548,7 @@ ALTER TABLE ONLY public.subscription_plans
 
 
 --
--- Name: subscriptions subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subscriptions subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.subscriptions
@@ -529,7 +556,7 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
--- Name: subscriptions subscriptions_stripe_subscription_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subscriptions subscriptions_stripe_subscription_id_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.subscriptions
@@ -537,7 +564,7 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
--- Name: tenant_modules tenant_modules_tenant_id_module_id_pk; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenant_modules tenant_modules_tenant_id_module_id_pk; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenant_modules
@@ -545,7 +572,7 @@ ALTER TABLE ONLY public.tenant_modules
 
 
 --
--- Name: tenants tenants_email_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_email_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenants
@@ -553,7 +580,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenants
@@ -561,7 +588,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: tenants tenants_stripe_customer_id_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenants tenants_stripe_customer_id_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenants
@@ -569,7 +596,7 @@ ALTER TABLE ONLY public.tenants
 
 
 --
--- Name: testimonials testimonials_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: testimonials testimonials_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.testimonials
@@ -577,7 +604,7 @@ ALTER TABLE ONLY public.testimonials
 
 
 --
--- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.users
@@ -585,7 +612,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.users
@@ -593,7 +620,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: billing_history billing_history_subscription_id_subscriptions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: billing_history billing_history_subscription_id_subscriptions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.billing_history
@@ -601,7 +628,7 @@ ALTER TABLE ONLY public.billing_history
 
 
 --
--- Name: billing_history billing_history_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: billing_history billing_history_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.billing_history
@@ -609,7 +636,7 @@ ALTER TABLE ONLY public.billing_history
 
 
 --
--- Name: blog_posts blog_posts_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: blog_posts blog_posts_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.blog_posts
@@ -617,7 +644,7 @@ ALTER TABLE ONLY public.blog_posts
 
 
 --
--- Name: faqs faqs_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: faqs faqs_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.faqs
@@ -625,7 +652,7 @@ ALTER TABLE ONLY public.faqs
 
 
 --
--- Name: feature_votes feature_votes_feature_id_roadmap_features_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_votes feature_votes_feature_id_roadmap_features_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.feature_votes
@@ -633,7 +660,7 @@ ALTER TABLE ONLY public.feature_votes
 
 
 --
--- Name: feature_votes feature_votes_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: feature_votes feature_votes_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.feature_votes
@@ -641,7 +668,7 @@ ALTER TABLE ONLY public.feature_votes
 
 
 --
--- Name: outlets outlets_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: outlets outlets_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.outlets
@@ -649,7 +676,7 @@ ALTER TABLE ONLY public.outlets
 
 
 --
--- Name: outlets outlets_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: outlets outlets_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.outlets
@@ -657,7 +684,7 @@ ALTER TABLE ONLY public.outlets
 
 
 --
--- Name: refresh_tokens refresh_tokens_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: refresh_tokens refresh_tokens_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.refresh_tokens
@@ -665,7 +692,7 @@ ALTER TABLE ONLY public.refresh_tokens
 
 
 --
--- Name: roadmap_features roadmap_features_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: roadmap_features roadmap_features_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.roadmap_features
@@ -673,7 +700,7 @@ ALTER TABLE ONLY public.roadmap_features
 
 
 --
--- Name: subscriptions subscriptions_plan_id_subscription_plans_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subscriptions subscriptions_plan_id_subscription_plans_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.subscriptions
@@ -681,7 +708,7 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
--- Name: subscriptions subscriptions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: subscriptions subscriptions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.subscriptions
@@ -689,7 +716,7 @@ ALTER TABLE ONLY public.subscriptions
 
 
 --
--- Name: tenant_modules tenant_modules_enabled_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenant_modules tenant_modules_enabled_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenant_modules
@@ -697,7 +724,7 @@ ALTER TABLE ONLY public.tenant_modules
 
 
 --
--- Name: tenant_modules tenant_modules_module_id_modules_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenant_modules tenant_modules_module_id_modules_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenant_modules
@@ -705,7 +732,7 @@ ALTER TABLE ONLY public.tenant_modules
 
 
 --
--- Name: tenant_modules tenant_modules_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: tenant_modules tenant_modules_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.tenant_modules
@@ -713,7 +740,7 @@ ALTER TABLE ONLY public.tenant_modules
 
 
 --
--- Name: testimonials testimonials_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: testimonials testimonials_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.testimonials
@@ -721,11 +748,32 @@ ALTER TABLE ONLY public.testimonials
 
 
 --
--- Name: users users_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: neondb_owner
 --
 
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id);
+
+
+--
+-- Name: DATABASE neondb; Type: ACL; Schema: -; Owner: neondb_owner
+--
+
+GRANT ALL ON DATABASE neondb TO neon_superuser;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO neon_superuser WITH GRANT OPTION;
+
+
+--
+-- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: cloud_admin
+--
+
+ALTER DEFAULT PRIVILEGES FOR ROLE cloud_admin IN SCHEMA public GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLES TO neon_superuser WITH GRANT OPTION;
 
 
 --

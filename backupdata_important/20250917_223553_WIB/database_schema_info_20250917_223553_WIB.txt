@@ -1,0 +1,63 @@
+           info            
+---------------------------
+ TABLE: billing_history
+ TABLE: blog_posts
+ TABLE: faqs
+ TABLE: feature_votes
+ TABLE: modules
+ TABLE: outlets
+ TABLE: refresh_tokens
+ TABLE: roadmap_features
+ TABLE: subscription_plans
+ TABLE: subscriptions
+ TABLE: tenant_modules
+ TABLE: tenants
+ TABLE: testimonials
+ TABLE: users
+(14 rows)
+
+ ?column? 
+----------
+ 
+(1 row)
+
+     info      
+---------------
+ TABLE COUNTS:
+(1 row)
+
+ ?column? 
+----------
+ users: 3
+(1 row)
+
+  ?column?  
+------------
+ tenants: 1
+(1 row)
+
+       ?column?        
+-----------------------
+ subscription_plans: 3
+(1 row)
+
+  ?column?  
+------------
+ modules: 4
+(1 row)
+
+     ?column?     
+------------------
+ subscriptions: 0
+(1 row)
+
+  ?column?  
+------------
+ outlets: 0
+(1 row)
+
+      ?column?      
+--------------------
+ billing_history: 0
+(1 row)
+
