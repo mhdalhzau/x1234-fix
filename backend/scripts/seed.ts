@@ -76,6 +76,25 @@ async function seedDatabase() {
     await db.insert(modules).values(moduleList);
     console.log('✅ Created modules');
 
+    // Create superadmin user from backup
+    const { users } = await import('../models/schema.js');
+    
+    const superadmin = {
+      id: '9519bbe5-f835-4e5e-9848-fde5dbbdae71',
+      tenantId: null,
+      username: 'superadmin',
+      email: 'admin@system.com',
+      passwordHash: '$2a$10$BjGQFR/1b5xPSFaltA2sLeOmnoqh6DCMQczxb.4LMAYNd/b/Hmt0K',
+      role: 'admin' as const,
+      isActive: true,
+      lastLoginAt: null,
+      createdAt: new Date('2025-09-17T05:02:43.769Z'),
+      updatedAt: new Date('2025-09-17T05:02:43.769Z')
+    };
+
+    await db.insert(users).values(superadmin).onConflictDoNothing();
+    console.log('✅ Created superadmin user (admin@system.com)');
+
     console.log('🎉 Database seeded successfully!');
   } catch (error) {
     console.error('❌ Error seeding database:', error);
