@@ -114,11 +114,12 @@ const updateOutletSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, res) => {
+router.put('/:id', requireAuth, requireTenantBound, requireRole(['owner', 'manager']), async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
     const data = updateOutletSchema.parse(req.body);
+    const tenantId = authReq.user!.tenantId!;
 
     const [updatedOutlet] = await db.update(outlets)
       .set({
@@ -127,7 +128,7 @@ router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, r
       })
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, authReq.user!.tenantId)
+        eq(outlets.tenantId, tenantId)
       ))
       .returning();
 
@@ -146,15 +147,16 @@ router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, r
 });
 
 // Delete outlet (owner only)
-router.delete('/:id', requireAuth, requireRole(['owner']), async (req, res) => {
+router.delete('/:id', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
+    const tenantId = authReq.user!.tenantId!;
 
     const deletedOutlet = await db.delete(outlets)
       .where(and(
         eq(outlets.id, id),
-        eq(outlets.tenantId, authReq.user!.tenantId)
+        eq(outlets.tenantId, tenantId)
       ))
       .returning();
 

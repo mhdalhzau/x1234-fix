@@ -53,10 +53,11 @@ const subscribeSchema = z.object({
   planId: z.string().uuid(),
 });
 
-router.post('/subscribe', requireAuth, requireRole(['owner']), async (req, res) => {
+router.post('/subscribe', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const data = subscribeSchema.parse(req.body);
+    const tenantId = authReq.user!.tenantId!;
 
     // Check if plan exists
     const [plan] = await db.select()
@@ -70,11 +71,11 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req, res) 
     // Cancel any existing active subscription
     await db.update(subscriptions)
       .set({ status: 'cancelled', updatedAt: new Date() })
-      .where(eq(subscriptions.tenantId, authReq.user!.tenantId));
+      .where(eq(subscriptions.tenantId, tenantId));
 
     // Create new subscription
     const [newSubscription] = await db.insert(subscriptions).values({
-      tenantId: authReq.user!.tenantId,
+      tenantId: tenantId,
       planId: data.planId,
       status: 'active',
       startDate: new Date(),
@@ -90,11 +91,11 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req, res) 
         status: 'active',
         updatedAt: new Date(),
       })
-      .where(eq(tenants.id, authReq.user!.tenantId));
+      .where(eq(tenants.id, tenantId));
 
     // Create billing entry
     await db.insert(billingHistory).values({
-      tenantId: authReq.user!.tenantId,
+      tenantId: tenantId,
       subscriptionId: newSubscription.id,
       amount: plan.price,
       currency: plan.currency,
@@ -117,12 +118,13 @@ router.post('/subscribe', requireAuth, requireRole(['owner']), async (req, res) 
 });
 
 // Get billing history
-router.get('/billing', requireAuth, requireRole(['owner']), async (req, res) => {
+router.get('/billing', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
+    const tenantId = authReq.user!.tenantId!;
     const billing = await db.select()
       .from(billingHistory)
-      .where(eq(billingHistory.tenantId, authReq.user!.tenantId))
+      .where(eq(billingHistory.tenantId, tenantId))
       .orderBy(desc(billingHistory.createdAt));
 
     res.json(billing);

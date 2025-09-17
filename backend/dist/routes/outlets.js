@@ -95,17 +95,18 @@ const updateOutletSchema = z.object({
     phone: z.string().optional(),
     isActive: z.boolean().optional(),
 });
-router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, res) => {
+router.put('/:id', requireAuth, requireTenantBound, requireRole(['owner', 'manager']), async (req, res) => {
     try {
         const { id } = req.params;
         const authReq = req;
         const data = updateOutletSchema.parse(req.body);
+        const tenantId = authReq.user.tenantId;
         const [updatedOutlet] = await db.update(outlets)
             .set({
             ...data,
             updatedAt: new Date(),
         })
-            .where(and(eq(outlets.id, id), eq(outlets.tenantId, authReq.user.tenantId)))
+            .where(and(eq(outlets.id, id), eq(outlets.tenantId, tenantId)))
             .returning();
         if (!updatedOutlet) {
             return res.status(404).json({ message: 'Outlet not found' });
@@ -121,12 +122,13 @@ router.put('/:id', requireAuth, requireRole(['owner', 'manager']), async (req, r
     }
 });
 // Delete outlet (owner only)
-router.delete('/:id', requireAuth, requireRole(['owner']), async (req, res) => {
+router.delete('/:id', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
     try {
         const { id } = req.params;
         const authReq = req;
+        const tenantId = authReq.user.tenantId;
         const deletedOutlet = await db.delete(outlets)
-            .where(and(eq(outlets.id, id), eq(outlets.tenantId, authReq.user.tenantId)))
+            .where(and(eq(outlets.id, id), eq(outlets.tenantId, tenantId)))
             .returning();
         if (deletedOutlet.length === 0) {
             return res.status(404).json({ message: 'Outlet not found' });
