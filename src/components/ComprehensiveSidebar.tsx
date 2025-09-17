@@ -40,25 +40,25 @@ interface NavItem {
 }
 
 const saasNavigation: NavItem[] = [
-  // Dashboard & Analytics
+  // Dashboard & Analytics - All users can see dashboard
   { 
     name: 'Dashboard', 
     href: '/dashboard', 
     icon: LayoutDashboard, 
-    roles: ['admin', 'manager', 'staff'] 
+    roles: ['superadmin', 'tenant_owner', 'admin', 'staff'] 
   },
   
-  // SaaS Analytics & Metrics
+  // SaaS Analytics & Metrics - Only for business insights
   { 
     name: 'Analytics', 
     href: '/analytics', 
     icon: BarChart3, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'Key Metrics', href: '/analytics/metrics', icon: TrendingUp, roles: ['admin'] },
-      { name: 'Revenue Reports', href: '/analytics/revenue', icon: CreditCard, roles: ['admin', 'manager'] },
-      { name: 'User Analytics', href: '/analytics/users', icon: Users, roles: ['admin', 'manager'] },
-      { name: 'Churn Analysis', href: '/analytics/churn', icon: BarChart3, roles: ['admin'] }
+      { name: 'Key Metrics', href: '/analytics/metrics', icon: TrendingUp, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Revenue Reports', href: '/analytics/revenue', icon: CreditCard, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'User Analytics', href: '/analytics/users', icon: Users, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'Churn Analysis', href: '/analytics/churn', icon: BarChart3, roles: ['superadmin', 'tenant_owner'] }
     ]
   },
 
@@ -67,27 +67,27 @@ const saasNavigation: NavItem[] = [
     name: 'User Management', 
     href: '/user-management', 
     icon: Users, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'Users', href: '/user-management/users', icon: Users, roles: ['admin', 'manager'] },
-      { name: 'Roles & Permissions', href: '/user-management/roles', icon: Shield, roles: ['admin'] },
-      { name: 'Authentication', href: '/user-management/auth', icon: Lock, roles: ['admin'] },
-      { name: 'Two-Factor Auth', href: '/user-management/2fa', icon: Shield, roles: ['admin'] }
+      { name: 'Users', href: '/user-management/users', icon: Users, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'Roles & Permissions', href: '/user-management/roles', icon: Shield, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Authentication', href: '/user-management/auth', icon: Lock, roles: ['superadmin'] },
+      { name: 'Two-Factor Auth', href: '/user-management/2fa', icon: Shield, roles: ['superadmin', 'tenant_owner'] }
     ]
   },
 
-  // Subscription & Payment Management
+  // Subscription & Payment Management - Superadmin and business owners
   { 
     name: 'Subscriptions', 
     href: '/subscriptions', 
     icon: CreditCard, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner'],
     children: [
-      { name: 'Plans & Pricing', href: '/subscriptions/plans', icon: Package, roles: ['admin'] },
-      { name: 'Subscribers', href: '/subscriptions/subscribers', icon: Users, roles: ['admin', 'manager'] },
-      { name: 'Billing', href: '/subscriptions/billing', icon: CreditCard, roles: ['admin'] },
-      { name: 'Invoices', href: '/subscriptions/invoices', icon: FileText, roles: ['admin'] },
-      { name: 'Discounts', href: '/subscriptions/discounts', icon: Star, roles: ['admin'] }
+      { name: 'Plans & Pricing', href: '/subscriptions/plans', icon: Package, roles: ['superadmin'] },
+      { name: 'Subscribers', href: '/subscriptions/subscribers', icon: Users, roles: ['superadmin'] },
+      { name: 'Billing', href: '/subscriptions/billing', icon: CreditCard, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Invoices', href: '/subscriptions/invoices', icon: FileText, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Discounts', href: '/subscriptions/discounts', icon: Star, roles: ['superadmin'] }
     ]
   },
 
@@ -96,11 +96,11 @@ const saasNavigation: NavItem[] = [
     name: 'Organizations', 
     href: '/organizations', 
     icon: Building, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'Tenants', href: '/organizations/tenants', icon: Building, roles: ['admin'] },
-      { name: 'Team Management', href: '/organizations/teams', icon: Users, roles: ['admin', 'manager'] },
-      { name: 'Outlets', href: '/organizations/outlets', icon: Store, roles: ['admin', 'manager'] }
+      { name: 'Tenants', href: '/organizations/tenants', icon: Building, roles: ['superadmin'] },
+      { name: 'Team Management', href: '/organizations/teams', icon: Users, roles: ['tenant_owner', 'admin'] },
+      { name: 'Outlets', href: '/organizations/outlets', icon: Store, roles: ['tenant_owner', 'admin'] }
     ]
   },
 
@@ -109,12 +109,12 @@ const saasNavigation: NavItem[] = [
     name: 'Content', 
     href: '/content', 
     icon: FileText, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'Blog Posts', href: '/content/blog', icon: FileText, roles: ['admin', 'manager'] },
-      { name: 'Product Roadmap', href: '/content/roadmap', icon: Calendar, roles: ['admin'] },
-      { name: 'FAQ Management', href: '/content/faq', icon: HelpCircle, roles: ['admin', 'manager'] },
-      { name: 'Testimonials', href: '/content/testimonials', icon: Star, roles: ['admin', 'manager'] }
+      { name: 'Blog Posts', href: '/content/blog', icon: FileText, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'Product Roadmap', href: '/content/roadmap', icon: Calendar, roles: ['superadmin'] },
+      { name: 'FAQ Management', href: '/content/faq', icon: HelpCircle, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'Testimonials', href: '/content/testimonials', icon: Star, roles: ['superadmin', 'tenant_owner', 'admin'] }
     ]
   },
 
@@ -123,40 +123,40 @@ const saasNavigation: NavItem[] = [
     name: 'Communications', 
     href: '/communications', 
     icon: Mail, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'Email Templates', href: '/communications/templates', icon: Mail, roles: ['admin'] },
-      { name: 'Email Campaigns', href: '/communications/campaigns', icon: Bell, roles: ['admin', 'manager'] },
-      { name: 'Notifications', href: '/communications/notifications', icon: Bell, roles: ['admin'] },
-      { name: 'Support Chat', href: '/communications/chat', icon: MessageSquare, roles: ['admin', 'manager'] }
+      { name: 'Email Templates', href: '/communications/templates', icon: Mail, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Email Campaigns', href: '/communications/campaigns', icon: Bell, roles: ['superadmin', 'tenant_owner', 'admin'] },
+      { name: 'Notifications', href: '/communications/notifications', icon: Bell, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Support Chat', href: '/communications/chat', icon: MessageSquare, roles: ['superadmin', 'tenant_owner', 'admin'] }
     ]
   },
 
-  // Customization & Branding
+  // Customization & Branding - Business owners can customize their brand
   { 
     name: 'Branding', 
     href: '/branding', 
     icon: Palette, 
-    roles: ['admin'],
+    roles: ['superadmin', 'tenant_owner'],
     children: [
-      { name: 'Theme Settings', href: '/branding/theme', icon: Palette, roles: ['admin'] },
-      { name: 'Logo & Assets', href: '/branding/assets', icon: Globe, roles: ['admin'] },
-      { name: 'Custom Domain', href: '/branding/domain', icon: Globe, roles: ['admin'] },
-      { name: 'White Label', href: '/branding/white-label', icon: Settings, roles: ['admin'] }
+      { name: 'Theme Settings', href: '/branding/theme', icon: Palette, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Logo & Assets', href: '/branding/assets', icon: Globe, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Custom Domain', href: '/branding/domain', icon: Globe, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'White Label', href: '/branding/white-label', icon: Settings, roles: ['superadmin'] }
     ]
   },
 
-  // Advanced Features
+  // Advanced Features - Technical integrations
   { 
     name: 'Integrations', 
     href: '/integrations', 
     icon: Zap, 
-    roles: ['admin'],
+    roles: ['superadmin', 'tenant_owner'],
     children: [
-      { name: 'API Management', href: '/integrations/api', icon: Code, roles: ['admin'] },
-      { name: 'Webhooks', href: '/integrations/webhooks', icon: Webhook, roles: ['admin'] },
-      { name: 'Third-party Apps', href: '/integrations/apps', icon: Package, roles: ['admin'] },
-      { name: 'Database', href: '/integrations/database', icon: Database, roles: ['admin'] }
+      { name: 'API Management', href: '/integrations/api', icon: Code, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Webhooks', href: '/integrations/webhooks', icon: Webhook, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Third-party Apps', href: '/integrations/apps', icon: Package, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Database', href: '/integrations/database', icon: Database, roles: ['superadmin'] }
     ]
   },
 
@@ -165,20 +165,20 @@ const saasNavigation: NavItem[] = [
     name: 'Settings', 
     href: '/settings', 
     icon: Settings, 
-    roles: ['admin', 'manager'],
+    roles: ['superadmin', 'tenant_owner', 'admin'],
     children: [
-      { name: 'General', href: '/settings/general', icon: Settings, roles: ['admin'] },
-      { name: 'Security', href: '/settings/security', icon: Lock, roles: ['admin'] },
-      { name: 'SEO & Meta', href: '/settings/seo', icon: Globe, roles: ['admin'] },
-      { name: 'Backup & Export', href: '/settings/backup', icon: Database, roles: ['admin'] }
+      { name: 'General', href: '/settings/general', icon: Settings, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Security', href: '/settings/security', icon: Lock, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'SEO & Meta', href: '/settings/seo', icon: Globe, roles: ['superadmin', 'tenant_owner'] },
+      { name: 'Backup & Export', href: '/settings/backup', icon: Database, roles: ['superadmin'] }
     ]
   }
 ];
 
 const adminNavigation: NavItem[] = [
-  { name: 'System Admin', href: '/admin', icon: Shield, roles: ['admin'] },
-  { name: 'System Logs', href: '/admin/logs', icon: FileText, roles: ['admin'] },
-  { name: 'Performance', href: '/admin/performance', icon: BarChart3, roles: ['admin'] }
+  { name: 'System Admin', href: '/admin', icon: Shield, roles: ['superadmin'] },
+  { name: 'System Logs', href: '/admin/logs', icon: FileText, roles: ['superadmin'] },
+  { name: 'Performance', href: '/admin/performance', icon: BarChart3, roles: ['superadmin'] }
 ];
 
 export default function ComprehensiveSidebar() {
@@ -268,8 +268,16 @@ export default function ComprehensiveSidebar() {
               <Zap className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-white text-lg font-bold">Admin Panel</h2>
-              <p className="text-gray-400 text-xs">Management Dashboard</p>
+              <h2 className="text-white text-lg font-bold">
+                {user.role === 'superadmin' ? 'Superadmin Panel' :
+                 user.role === 'tenant_owner' ? 'Business Dashboard' :
+                 'Management Dashboard'}
+              </h2>
+              <p className="text-gray-400 text-xs">
+                {user.role === 'superadmin' ? 'System-wide Control' :
+                 user.role === 'tenant_owner' ? 'Business Management' :
+                 'Team Management'}
+              </p>
             </div>
           </div>
         </div>
@@ -282,9 +290,22 @@ export default function ComprehensiveSidebar() {
                 {user.username?.charAt(0).toUpperCase()}
               </span>
             </div>
-            <div className="ml-3">
+            <div className="ml-3 flex-1">
               <p className="text-sm font-medium text-white">{user.username}</p>
-              <p className="text-xs text-gray-400 capitalize">{user.role}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-gray-400 capitalize">{user.role.replace('_', ' ')}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  user.role === 'superadmin' ? 'bg-red-600 text-white' :
+                  user.role === 'tenant_owner' ? 'bg-blue-600 text-white' :
+                  user.role === 'admin' ? 'bg-green-600 text-white' :
+                  'bg-gray-600 text-white'
+                }`}>
+                  {user.role === 'superadmin' ? 'Superadmin' :
+                   user.role === 'tenant_owner' ? 'Business Owner' :
+                   user.role === 'admin' ? 'Admin' :
+                   'Staff'}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -294,8 +315,8 @@ export default function ComprehensiveSidebar() {
           <nav className="mt-2 flex-1 px-2 space-y-1">
             {saasNavigation.map(item => renderNavItem(item))}
             
-            {/* Admin Section */}
-            {user.role === 'admin' && (
+            {/* Superadmin Section */}
+            {user.role === 'superadmin' && (
               <>
                 <div className="border-t border-gray-700 mt-6 pt-6">
                   <div className="px-2 mb-2">
