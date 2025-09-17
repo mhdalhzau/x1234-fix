@@ -33,6 +33,13 @@ import APIManagementPage from './pages/integrations/APIManagementPage';
 // Branding pages
 import ThemeSettingsPage from './pages/branding/ThemeSettingsPage';
 
+// Analytics pages
+import MetricsPage from './pages/analytics/MetricsPage';
+import UserAnalyticsPage from './pages/analytics/UserAnalyticsPage';
+import SubscriptionAnalyticsPage from './pages/analytics/SubscriptionAnalyticsPage';
+import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
+import SuperAdminRoute from './components/SuperAdminRoute';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -211,6 +218,48 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ThemeSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Analytics routes - Superadmin only */}
+      <Route
+        path="/analytics/metrics"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <MetricsPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics/users"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <UserAnalyticsPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics/subscriptions"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <SubscriptionAnalyticsPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics/revenue"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <RevenueAnalyticsPage />
+            </SuperAdminRoute>
           </ProtectedRoute>
         }
       />

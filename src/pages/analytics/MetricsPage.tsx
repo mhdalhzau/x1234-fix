@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Users, BarChart3, Calendar } from 'lucide-react';
+import axios from 'axios';
 
 interface MetricCard {
   title: string;
@@ -9,60 +10,150 @@ interface MetricCard {
   icon: any;
 }
 
+interface ApiMetrics {
+  mrr: { value: number; change: number; trend: 'up' | 'down' };
+  arr: { value: number; change: number; trend: 'up' | 'down' };
+  activeSubscribers: { value: number; change: number; trend: 'up' | 'down' };
+  churnRate: { value: number; change: number; trend: 'up' | 'down' };
+  arpu: { value: number; change: number; trend: 'up' | 'down' };
+  clv: { value: number; change: number; trend: 'up' | 'down' };
+}
+
 export default function SaaSMetricsPage() {
   const [metrics, setMetrics] = useState<MetricCard[]>([]);
   const [timeRange, setTimeRange] = useState('30days');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setMetrics([
-        {
-          title: 'Monthly Recurring Revenue (MRR)',
-          value: '$12,450',
-          change: '+8.2%',
-          trend: 'up',
-          icon: DollarSign
-        },
-        {
-          title: 'Annual Recurring Revenue (ARR)',
-          value: '$149,400',
-          change: '+12.5%',
-          trend: 'up',
-          icon: TrendingUp
-        },
-        {
-          title: 'Active Subscribers',
-          value: '387',
-          change: '+5.3%',
-          trend: 'up',
-          icon: Users
-        },
-        {
-          title: 'Churn Rate',
-          value: '2.8%',
-          change: '-0.5%',
-          trend: 'up',
-          icon: TrendingDown
-        },
-        {
-          title: 'Average Revenue Per User (ARPU)',
-          value: '$32.17',
-          change: '+2.8%',
-          trend: 'up',
-          icon: BarChart3
-        },
-        {
-          title: 'Customer Lifetime Value (CLV)',
-          value: '$1,147',
-          change: '+15.2%',
-          trend: 'up',
-          icon: Calendar
-        }
-      ]);
-      setIsLoading(false);
-    }, 1000);
+    const fetchMetrics = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const response = await axios.get('/api/analytics/metrics', {
+          params: { timeRange },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        });
+
+        const data: ApiMetrics = response.data;
+
+        const formattedMetrics: MetricCard[] = [
+          {
+            title: 'Monthly Recurring Revenue (MRR)',
+            value: formatCurrency(data.mrr.value),
+            change: `${data.mrr.change > 0 ? '+' : ''}${formatPercentage(data.mrr.change)}`,
+            trend: data.mrr.trend,
+            icon: DollarSign
+          },
+          {
+            title: 'Annual Recurring Revenue (ARR)',
+            value: formatCurrency(data.arr.value),
+            change: `${data.arr.change > 0 ? '+' : ''}${formatPercentage(data.arr.change)}`,
+            trend: data.arr.trend,
+            icon: TrendingUp
+          },
+          {
+            title: 'Active Subscribers',
+            value: data.activeSubscribers.value.toString(),
+            change: `${data.activeSubscribers.change > 0 ? '+' : ''}${formatPercentage(data.activeSubscribers.change)}`,
+            trend: data.activeSubscribers.trend,
+            icon: Users
+          },
+          {
+            title: 'Churn Rate',
+            value: formatPercentage(data.churnRate.value),
+            change: `${data.churnRate.change > 0 ? '+' : ''}${formatPercentage(data.churnRate.change)}`,
+            trend: data.churnRate.trend,
+            icon: TrendingDown
+          },
+          {
+            title: 'Average Revenue Per User (ARPU)',
+            value: formatCurrency(data.arpu.value),
+            change: `${data.arpu.change > 0 ? '+' : ''}${formatPercentage(data.arpu.change)}`,
+            trend: data.arpu.trend,
+            icon: BarChart3
+          },
+          {
+            title: 'Customer Lifetime Value (CLV)',
+            value: formatCurrency(data.clv.value),
+            change: `${data.clv.change > 0 ? '+' : ''}${formatPercentage(data.clv.change)}`,
+            trend: data.clv.trend,
+            icon: Calendar
+          }
+        ];
+
+        setMetrics(formattedMetrics);
+      } catch (err) {
+        console.error('Error fetching metrics:', err);
+        setError('Failed to load analytics data. Please try again.');
+        
+        // Fallback to mock data if API fails
+        setMetrics([
+          {
+            title: 'Monthly Recurring Revenue (MRR)',
+            value: 'Rp 0',
+            change: '+0%',
+            trend: 'up',
+            icon: DollarSign
+          },
+          {
+            title: 'Annual Recurring Revenue (ARR)',
+            value: 'Rp 0',
+            change: '+0%',
+            trend: 'up',
+            icon: TrendingUp
+          },
+          {
+            title: 'Active Subscribers',
+            value: '0',
+            change: '+0%',
+            trend: 'up',
+            icon: Users
+          },
+          {
+            title: 'Churn Rate',
+            value: '0%',
+            change: '+0%',
+            trend: 'up',
+            icon: TrendingDown
+          },
+          {
+            title: 'Average Revenue Per User (ARPU)',
+            value: 'Rp 0',
+            change: '+0%',
+            trend: 'up',
+            icon: BarChart3
+          },
+          {
+            title: 'Customer Lifetime Value (CLV)',
+            value: 'Rp 0',
+            change: '+0%',
+            trend: 'up',
+            icon: Calendar
+          }
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMetrics();
   }, [timeRange]);
 
   if (isLoading) {
@@ -80,6 +171,11 @@ export default function SaaSMetricsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">SaaS Metrics Dashboard</h1>
           <p className="text-gray-600">Monitor your key SaaS performance indicators</p>
+          {error && (
+            <div className="mt-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {error}
+            </div>
+          )}
         </div>
         <select
           value={timeRange}

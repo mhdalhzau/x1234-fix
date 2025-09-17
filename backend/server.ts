@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import tenantRoutes from './routes/tenants.js';
 import outletRoutes from './routes/outlets.js';
 import subscriptionRoutes from './routes/subscriptions.js';
+import analyticsRoutes from './routes/analytics.js';
 
 // Load environment variables
 dotenv.config();
@@ -69,6 +70,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tenants', tenantRoutes);
 app.use('/api/outlets', outletRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Serve static files in production
 if (NODE_ENV === 'production') {
