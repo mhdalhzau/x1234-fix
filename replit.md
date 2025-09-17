@@ -81,7 +81,7 @@ A complete multi-tenant SaaS Dashboard application for Point of Sale (POS) syste
 ```
 Email: admin@system.com
 Username: superadmin
-Role: admin (system-wide)
+Role: systemadmin (system-wide)
 Status: Active
 Password: [Original hash dari backup]
 ```
