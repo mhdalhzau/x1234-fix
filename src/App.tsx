@@ -18,6 +18,9 @@ import PlansPage from './pages/subscriptions/PlansPage';
 
 // Content pages
 import BlogPage from './pages/content/BlogPage';
+import FAQPage from './pages/content/FAQPage';
+import TestimonialsPage from './pages/content/TestimonialsPage';
+import ProductRoadmapPage from './pages/content/ProductRoadmapPage';
 
 // Communication pages
 import EmailTemplatesPage from './pages/communications/EmailTemplatesPage';
@@ -178,6 +181,30 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <BlogPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/content/faq"
+        element={
+          <ProtectedRoute>
+            <FAQPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/content/testimonials"
+        element={
+          <ProtectedRoute>
+            <TestimonialsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/content/roadmap"
+        element={
+          <ProtectedRoute>
+            <ProductRoadmapPage />
           </ProtectedRoute>
         }
       />
