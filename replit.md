@@ -86,12 +86,19 @@ Status: Active
 Password: [Original hash dari backup]
 ```
 
-### Test User (development):
+### Test Owner (development):
 ```
-Email: admin@test.com
+Email: admin@owner.com
 Password: password123
-Role: admin (tenant scope)
+Role: owner (tenant scope)
 Tenant: Test Business
+```
+### Test Staff (development):
+```
+Email: admin@staff.com
+Password: password123
+Role: staff (tenant staff scope)
+Tenant: Test staff Business
 ```
 
 ## Workflow Status:
