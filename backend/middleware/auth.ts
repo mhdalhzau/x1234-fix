@@ -130,11 +130,11 @@ export function requireSameTenant(req: Request, res: Response, next: NextFunctio
   next();
 }
 
-// Require tenant-bound user (not admin)
+// Require tenant-bound user (not superadmin)
 export function requireTenantBound(req: Request, res: Response, next: NextFunction) {
   const authReq = req as AuthenticatedRequest;
-  if (!authReq.user || !authReq.user.tenantId) {
-    return res.status(403).json({ message: 'Access denied: tenant required' });
+  if (!authReq.user || !authReq.user.tenantId || authReq.user.role === 'superadmin') {
+    return res.status(403).json({ message: 'Access denied: tenant-bound user required' });
   }
   next();
 }

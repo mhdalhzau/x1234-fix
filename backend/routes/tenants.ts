@@ -11,8 +11,8 @@ const router = Router();
 router.get('/me', requireAuth, async (req, res) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    // If user is superadmin (no tenant), return superadmin info
-    if (!authReq.user!.tenantId || authReq.user!.role === 'superadmin') {
+    // If user is superadmin, return superadmin info
+    if (authReq.user!.role === 'superadmin') {
       return res.json({
         id: 'superadmin',
         businessName: 'Superadmin Dashboard',
@@ -22,6 +22,11 @@ router.get('/me', requireAuth, async (req, res) => {
           totalOutlets: 0,
         },
       });
+    }
+
+    // Non-superadmin users must have a tenant
+    if (!authReq.user!.tenantId) {
+      return res.status(403).json({ message: 'Access denied: tenant required for non-superadmin users' });
     }
 
     const tenantId = authReq.user!.tenantId!;

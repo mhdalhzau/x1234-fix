@@ -3,17 +3,23 @@ import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
 import { outlets, tenants } from '../models/schema.js';
-import { requireAuth, requireRole, requireTenantBound, AuthenticatedRequest } from '../middleware/auth.js';
+import { requireAuth, requireRole, requireTenantBound, canAccessTenant, AuthenticatedRequest } from '../middleware/auth.js';
 
 const router = Router();
 
-// Get all outlets for tenant
-router.get('/', requireAuth, async (req, res) => {
+// Get all outlets for tenant (tenant_owner and admin only)
+router.get('/', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     
-    // If user is admin (no tenant), return empty array
-    if (!authReq.user!.tenantId || authReq.user!.role === 'admin') {
+    // If user is superadmin (no tenant), return all outlets
+    if (authReq.user!.role === 'superadmin') {
+      const allOutlets = await db.select().from(outlets);
+      return res.json(allOutlets);
+    }
+    
+    // Regular tenant users get their tenant outlets only
+    if (!authReq.user!.tenantId) {
       return res.json([]);
     }
     
@@ -29,13 +35,30 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
-// Get single outlet
-router.get('/:id', requireAuth, requireTenantBound, async (req, res) => {
+// Get single outlet (tenant_owner and admin only)
+router.get('/:id', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
 
-    const tenantId = authReq.user!.tenantId!;
+    // Superadmin can access any outlet
+    if (authReq.user!.role === 'superadmin') {
+      const [outlet] = await db.select()
+        .from(outlets)
+        .where(eq(outlets.id, id));
+
+      if (!outlet) {
+        return res.status(404).json({ message: 'Outlet not found' });
+      }
+      return res.json(outlet);
+    }
+
+    // Regular tenant users - enforce tenant boundary
+    const tenantId = authReq.user!.tenantId;
+    if (!tenantId) {
+      return res.status(403).json({ message: 'Access denied: tenant required' });
+    }
+
     const [outlet] = await db.select()
       .from(outlets)
       .where(and(
@@ -61,10 +84,17 @@ const createOutletSchema = z.object({
   phone: z.string().optional(),
 });
 
-router.post('/', requireAuth, requireTenantBound, requireRole(['owner', 'manager']), async (req, res) => {
+router.post('/', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const data = createOutletSchema.parse(req.body);
+
+    // Superadmin needs explicit tenant parameter for outlet creation
+    if (authReq.user!.role === 'superadmin') {
+      return res.status(400).json({ 
+        message: 'Superadmin must specify target tenant_id in request body for outlet creation' 
+      });
+    }
 
     // Check tenant outlet limits
     const tenantId = authReq.user!.tenantId!;
@@ -114,11 +144,28 @@ const updateOutletSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-router.put('/:id', requireAuth, requireTenantBound, requireRole(['owner', 'manager']), async (req, res) => {
+router.put('/:id', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
     const data = updateOutletSchema.parse(req.body);
+
+    // Superadmin can update any outlet
+    if (authReq.user!.role === 'superadmin') {
+      const [updatedOutlet] = await db.update(outlets)
+        .set({
+          ...data,
+          updatedAt: new Date(),
+        })
+        .where(eq(outlets.id, id))
+        .returning();
+
+      if (!updatedOutlet) {
+        return res.status(404).json({ message: 'Outlet not found' });
+      }
+      return res.json(updatedOutlet);
+    }
+
     const tenantId = authReq.user!.tenantId!;
 
     const [updatedOutlet] = await db.update(outlets)
@@ -147,10 +194,23 @@ router.put('/:id', requireAuth, requireTenantBound, requireRole(['owner', 'manag
 });
 
 // Delete outlet (owner only)
-router.delete('/:id', requireAuth, requireTenantBound, requireRole(['owner']), async (req, res) => {
+router.delete('/:id', requireAuth, requireRole(['superadmin', 'tenant_owner']), async (req, res) => {
   try {
     const { id } = req.params;
     const authReq = req as AuthenticatedRequest;
+
+    // Superadmin can delete any outlet
+    if (authReq.user!.role === 'superadmin') {
+      const [deletedOutlet] = await db.delete(outlets)
+        .where(eq(outlets.id, id))
+        .returning();
+
+      if (!deletedOutlet) {
+        return res.status(404).json({ message: 'Outlet not found' });
+      }
+      return res.json({ message: 'Outlet deleted successfully' });
+    }
+
     const tenantId = authReq.user!.tenantId!;
 
     const deletedOutlet = await db.delete(outlets)

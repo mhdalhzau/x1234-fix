@@ -251,4 +251,27 @@ Tenant: Test Business
 - ✅ **Feature modules setup** (POS, Inventory, Reports, Loyalty)
 - ✅ **Production build berhasil** (TypeScript errors fixed)
 - ✅ **Autoscale deployment configured**
+- ✅ **ROLE HIERARCHY IMPLEMENTED** (superadmin > tenant_owner > admin > staff)
+- ✅ **UI PERMISSIONS UPDATED** (role-based sidebar access)
+- ✅ **COMPREHENSIVE DOCUMENTATION CREATED** (Setup, Roles, Troubleshooting)
 - 🚀 **SIAP UNTUK DEPLOYMENT PRODUCTION**
+
+## 📚 DOCUMENTATION FILES CREATED:
+- **SETUP_GUIDE.md** - Complete setup instructions untuk Replit environment
+- **ROLES_HIERARCHY.md** - Detail role permissions dan hierarki system  
+- **TROUBLESHOOTING.md** - Common errors dan solutions untuk debugging
+
+## 🔐 CURRENT ROLE STRUCTURE:
+1. **Superadmin** (`superadmin`) - System administrator, bukan customer
+2. **Tenant Owner** (`tenant_owner`) - Business owner/customer yang berlangganan
+3. **Admin** (`admin`) - Administrator dalam bisnis customer
+4. **Staff** (`staff`) - Karyawan biasa dalam bisnis customer
+
+## ⚠️ LESSONS LEARNED - CRITICAL POINTS:
+- **Port 5000 WAJIB** untuk frontend di Replit (webview routing)
+- **Host 0.0.0.0 WAJIB** untuk frontend (proxy access)
+- **Backend port 8000** (hindari konflik dengan frontend)
+- **Role 'superadmin'** untuk system access (bukan 'admin')
+- **Database restore errors normal** (neondb_owner tidak ada - abaikan)
+- **Dependencies install order** - frontend dulu, lalu backend
+- **JWT secrets** harus di-set di workflow command untuk development
