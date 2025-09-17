@@ -82,6 +82,7 @@ const createOutletSchema = z.object({
   name: z.string().min(2).max(255),
   address: z.string().optional(),
   phone: z.string().optional(),
+  tenantId: z.string().optional(), // Required for superadmin
 });
 
 router.post('/', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin']), async (req, res) => {
@@ -89,15 +90,22 @@ router.post('/', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin'
     const authReq = req as AuthenticatedRequest;
     const data = createOutletSchema.parse(req.body);
 
-    // Superadmin needs explicit tenant parameter for outlet creation
+    let tenantId: string;
+
+    // Handle superadmin - can create for any tenant
     if (authReq.user!.role === 'superadmin') {
-      return res.status(400).json({ 
-        message: 'Superadmin must specify target tenant_id in request body for outlet creation' 
-      });
+      if (!data.tenantId) {
+        return res.status(400).json({ 
+          message: 'Superadmin must specify target tenant_id in request body for outlet creation' 
+        });
+      }
+      tenantId = data.tenantId;
+    } else {
+      // Regular tenant users use their own tenant
+      tenantId = authReq.user!.tenantId!;
     }
 
     // Check tenant outlet limits
-    const tenantId = authReq.user!.tenantId!;
     const [tenant] = await db.select()
       .from(tenants)
       .where(eq(tenants.id, tenantId));
@@ -106,14 +114,14 @@ router.post('/', requireAuth, requireRole(['superadmin', 'tenant_owner', 'admin'
       return res.status(404).json({ message: 'Tenant not found' });
     }
 
-    // Check current outlet count
+    // Check current outlet count (enforce limits even for superadmin)
     const currentOutlets = await db.select()
       .from(outlets)
       .where(eq(outlets.tenantId, tenantId));
 
     if (currentOutlets.length >= tenant.maxOutlets) {
       return res.status(400).json({ 
-        message: `Outlet limit reached. Maximum ${tenant.maxOutlets} outlets allowed for your plan.` 
+        message: `Outlet limit reached. Maximum ${tenant.maxOutlets} outlets allowed for tenant ${tenant.businessName}.` 
       });
     }
 
