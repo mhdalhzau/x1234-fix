@@ -44,6 +44,7 @@ import SubscriptionAnalyticsPage from './pages/analytics/SubscriptionAnalyticsPa
 import RevenueAnalyticsPage from './pages/analytics/RevenueAnalyticsPage';
 import ChurnAnalysisPage from './pages/analytics/ChurnAnalysisPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
+import UserManagementPage from './pages/UserManagementPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -307,6 +308,42 @@ function AppRoutes() {
             <SuperAdminRoute>
               <RevenueAnalyticsPage />
             </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* User Management routes */}
+      <Route
+        path="/user-management/users"
+        element={
+          <ProtectedRoute>
+            <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user-management/roles"
+        element={
+          <ProtectedRoute>
+            <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user-management/auth"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <UserManagementPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/user-management/2fa"
+        element={
+          <ProtectedRoute>
+            <UserManagementPage />
           </ProtectedRoute>
         }
       />

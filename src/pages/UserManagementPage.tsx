@@ -78,9 +78,9 @@ export default function UserManagementPage() {
     console.log('Create user clicked - This will be implemented in the next phase');
   };
 
-  const handleEditUser = () => {
+  const handleEditUser = (user: User) => {
     // TODO: Implement user edit modal  
-    console.log('Edit user clicked - This will be implemented in the next phase');
+    console.log('Edit user clicked - This will be implemented in the next phase', user);
   };
 
   const handleDeleteUser = async (userId: string) => {

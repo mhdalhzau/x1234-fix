@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '../models/database.js';
-import { users, tenants, refreshTokens } from '../models/schema.js';
+import { users, tenants, refreshTokens, modules, tenantModules, subscriptionPlans, subscriptions } from '../models/schema.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, generateRandomToken } from '../utils/jwt.js';
 import { sendWelcomeEmail, sendActivationEmail, generateOTP, sendPasswordResetEmail, send2FACodeEmail } from '../utils/email.js';
@@ -69,64 +69,122 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Owner email already registered' });
     }
 
-    // Create tenant
-    const [newTenant] = await db.insert(tenants).values({
-      businessName: data.businessName,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      status: 'trial',
-      trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
-    }).returning();
+    // Perform all operations within a transaction for atomicity
+    const result = await db.transaction(async (tx) => {
+      // Create tenant
+      const [newTenant] = await tx.insert(tenants).values({
+        businessName: data.businessName,
+        email: data.email,
+        phone: data.phone,
+        address: data.address,
+        status: 'trial',
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
+      }).returning();
 
-    // Hash password
-    const passwordHash = await hashPassword(data.password);
+      // Hash password
+      const passwordHash = await hashPassword(data.password);
 
-    // Create owner user
-    const [newUser] = await db.insert(users).values({
-      username: data.ownerName,
-      email: data.ownerEmail,
-      password: passwordHash,
-      role: 'tenant_owner',
-    }).returning();
+      // Create owner user with proper tenantId link
+      const [newUser] = await tx.insert(users).values({
+        username: data.ownerName,
+        email: data.ownerEmail,
+        password: passwordHash,
+        role: 'tenant_owner',
+        tenantId: newTenant.id, // FIX: Link user to tenant
+      }).returning();
 
-    // Send welcome email
-    await sendWelcomeEmail(data.email, data.businessName);
+      // Get default modules that should be provisioned for new tenants
+      const defaultModules = await tx.select()
+        .from(modules)
+        .where(eq(modules.isDefault, true));
 
-    // Generate tokens
-    const payload = {
-      userId: newUser.id,
-      tenantId: newTenant.id,
-      role: newUser.role,
-      email: newUser.email,
-    };
+      // Provision default modules for the tenant
+      if (defaultModules.length > 0) {
+        await tx.insert(tenantModules).values(
+          defaultModules.map(module => ({
+            tenantId: newTenant.id,
+            moduleId: module.id,
+            isEnabled: true,
+            enabledAt: new Date(),
+            enabledBy: newUser.id,
+          }))
+        );
+      }
 
-    const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+      // Get the Basic plan for trial subscription
+      const [basicPlan] = await tx.select()
+        .from(subscriptionPlans)
+        .where(and(
+          eq(subscriptionPlans.name, 'Basic'),
+          eq(subscriptionPlans.isActive, true)
+        ));
 
-    // Store refresh token
-    await db.insert(refreshTokens).values({
-      userId: newUser.id,
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      if (basicPlan) {
+        // Create trial subscription record
+        const [newSubscription] = await tx.insert(subscriptions).values({
+          tenantId: newTenant.id,
+          planId: basicPlan.id,
+          status: 'active', // Trial is considered active
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days trial
+          autoRenew: false, // Don't auto-renew trial
+        }).returning();
+
+        // Update tenant with subscription reference
+        await tx.update(tenants)
+          .set({
+            subscriptionId: newSubscription.id,
+            maxOutlets: basicPlan.maxOutlets,
+            updatedAt: new Date(),
+          })
+          .where(eq(tenants.id, newTenant.id));
+      }
+
+      // Generate tokens
+      const payload = {
+        userId: newUser.id,
+        tenantId: newTenant.id,
+        role: newUser.role,
+        email: newUser.email,
+      };
+
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken(payload);
+
+      // Store refresh token
+      await tx.insert(refreshTokens).values({
+        userId: newUser.id,
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      });
+
+      return {
+        tenant: newTenant,
+        user: newUser,
+        accessToken,
+        refreshToken,
+      };
     });
+
+    // Send welcome email after successful transaction
+    await sendWelcomeEmail(data.email, data.businessName);
 
     res.status(201).json({
       message: 'Tenant registered successfully',
       tenant: {
-        id: newTenant.id,
-        businessName: newTenant.businessName,
-        email: newTenant.email,
-        status: newTenant.status,
+        id: result.tenant.id,
+        businessName: result.tenant.businessName,
+        email: result.tenant.email,
+        status: result.tenant.status,
       },
       user: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        role: newUser.role,
+        id: result.user.id,
+        username: result.user.username,
+        email: result.user.email,
+        role: result.user.role,
       },
-      accessToken,
-      refreshToken,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     });
   } catch (error) {
     console.error('Registration error:', error);
