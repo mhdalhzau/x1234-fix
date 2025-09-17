@@ -149,7 +149,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Verify password (using the password field from existing database)
+    // Verify password (using the password field from schema definition)
     const isValidPassword = await verifyPassword(data.password, foundUser.password);
     if (!isValidPassword) {
       return res.status(401).json({ message: 'Invalid email or password' });
