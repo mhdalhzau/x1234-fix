@@ -98,8 +98,9 @@ Tenant: Test Business
 Email: admin@staff.com
 Password: password123
 Role: staff (tenant staff scope)
-Tenant: Test staff Business
+Tenant: Test  Business
 ```
+admin@staff.com adalah staff dari admin@owner.com
 
 ## Workflow Status:
 - ✅ Backend: Running on port 8000
