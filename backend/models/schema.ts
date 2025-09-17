@@ -12,6 +12,7 @@ export const tenants = pgTable("tenants", {
   status: text("status", { enum: ["trial", "active", "suspended", "expired"] }).notNull().default("trial"),
   trialEndsAt: timestamp("trial_ends_at"),
   subscriptionId: uuid("subscription_id"),
+  stripeCustomerId: text("stripe_customer_id").unique(),
   maxOutlets: integer("max_outlets").notNull().default(1),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
@@ -66,6 +67,7 @@ export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   planId: uuid("plan_id").references(() => subscriptionPlans.id).notNull(),
+  stripeSubscriptionId: text("stripe_subscription_id").unique(),
   status: text("status", { enum: ["active", "expired", "cancelled", "pending"] }).notNull().default("pending"),
   startDate: timestamp("start_date").notNull().default(sql`now()`),
   endDate: timestamp("end_date").notNull(),
@@ -100,6 +102,7 @@ export const billingHistory = pgTable("billing_history", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
   subscriptionId: uuid("subscription_id").references(() => subscriptions.id),
+  stripeInvoiceId: text("stripe_invoice_id").unique(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("IDR"),
   paymentMethod: text("payment_method"), // bank_transfer, credit_card, etc
