@@ -39,13 +39,13 @@ outputType = "webview"
 name = "Backend"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd backend && JWT_SECRET=your-super-secret-jwt-key-for-development-only JWT_REFRESH_SECRET=your-super-secret-refresh-key-for-development-only NODE_ENV=development npm run dev"
-waitForPort = 8000
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd backend && NODE_ENV=development npm run dev"
+waitForPort = 8000
 
 [[ports]]
 localPort = 5000
@@ -54,10 +54,6 @@ externalPort = 80
 [[ports]]
 localPort = 8000
 externalPort = 8000
-
-[[ports]]
-localPort = 33033
-externalPort = 3001
 
 [[ports]]
 localPort = 33545

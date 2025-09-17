@@ -10,7 +10,9 @@
     "start": "cd backend && npm start",
     "preview": "vite preview",
     "db:push": "cd backend && npm run db:push",
-    "seed": "cd backend && npm run db:push && npx tsx scripts/seed.ts && npx tsx scripts/create-superadmin.ts"
+    "seed": "cd backend && npm run db:push && npx tsx scripts/seed.ts && npx tsx scripts/create-superadmin.ts",
+    "setup": "node scripts/setup-secrets.js",
+    "setup:dev": "npm run setup && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
