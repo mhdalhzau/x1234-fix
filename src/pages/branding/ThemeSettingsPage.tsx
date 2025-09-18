@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Save, Monitor, Sun, Moon, Smartphone } from 'lucide-react';
+import axios from 'axios';
 
 interface ThemeSettings {
   primaryColor: string;
@@ -29,7 +30,45 @@ export default function ThemeSettingsPage() {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+
+  // Load theme settings on component mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        setIsLoading(true);
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/themes', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.data) {
+          setSettings({
+            primaryColor: response.data.primaryColor || '#3B82F6',
+            secondaryColor: response.data.secondaryColor || '#6B7280',
+            accentColor: response.data.accentColor || '#10B981',
+            backgroundColor: response.data.backgroundColor || '#FFFFFF',
+            textColor: response.data.textColor || '#1F2937',
+            borderRadius: response.data.borderRadius || '8',
+            fontSize: response.data.fontSize || '14',
+            fontFamily: response.data.fontFamily || 'Inter',
+            darkMode: response.data.darkMode || false,
+            customCSS: response.data.customCSS || ''
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load theme settings:', error);
+        // Use default settings if loading fails
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
 
   const colorPresets = [
     { name: 'Blue', primary: '#3B82F6', secondary: '#6B7280', accent: '#10B981' },
@@ -61,18 +100,31 @@ export default function ThemeSettingsPage() {
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
+    setIsSaving(true);
     try {
-      // TODO: Implement API call to save theme settings
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      // Apply theme to document root
-      document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
-      document.documentElement.style.setProperty('--secondary-color', settings.secondaryColor);
-      document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+      const token = localStorage.getItem('token');
+      const response = await axios.put('/api/themes', settings, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.data) {
+        // Apply theme to document root for immediate visual feedback
+        document.documentElement.style.setProperty('--primary-color', settings.primaryColor);
+        document.documentElement.style.setProperty('--secondary-color', settings.secondaryColor);
+        document.documentElement.style.setProperty('--accent-color', settings.accentColor);
+        document.documentElement.style.setProperty('--background-color', settings.backgroundColor);
+        document.documentElement.style.setProperty('--text-color', settings.textColor);
+        
+        console.log('Theme settings saved successfully');
+      }
     } catch (error) {
       console.error('Failed to save theme settings:', error);
+      alert('Failed to save theme settings. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -94,15 +146,15 @@ export default function ThemeSettingsPage() {
         </div>
         <button
           onClick={handleSave}
-          disabled={isLoading}
+          disabled={isSaving || isLoading}
           className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 flex items-center disabled:opacity-50"
         >
-          {isLoading ? (
+          {(isSaving || isLoading) ? (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          Save Theme
+          {isSaving ? 'Saving...' : 'Save Theme'}
         </button>
       </div>
 

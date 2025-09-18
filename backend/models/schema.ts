@@ -198,6 +198,33 @@ export const featureVotes = pgTable("feature_votes", {
   uniqueUserFeatureVote: unique().on(table.featureId, table.userId),
 }));
 
+// Theme and branding settings per tenant
+export const themeSettings = pgTable("theme_settings", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: uuid("tenant_id").references(() => tenants.id).notNull(),
+  primaryColor: text("primary_color").notNull().default("#3B82F6"),
+  secondaryColor: text("secondary_color").notNull().default("#6B7280"),
+  accentColor: text("accent_color").notNull().default("#10B981"),
+  backgroundColor: text("background_color").notNull().default("#FFFFFF"),
+  textColor: text("text_color").notNull().default("#1F2937"),
+  borderRadius: text("border_radius").notNull().default("8"),
+  fontSize: text("font_size").notNull().default("14"),
+  fontFamily: text("font_family").notNull().default("Inter"),
+  darkMode: boolean("dark_mode").notNull().default(false),
+  customCSS: text("custom_css").default(""),
+  logoUrl: text("logo_url"),
+  faviconUrl: text("favicon_url"),
+  brandName: text("brand_name"),
+  companyName: text("company_name"),
+  customDomain: text("custom_domain"),
+  whiteLabel: boolean("white_label").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+}, (table) => ({
+  // One theme setting per tenant
+  uniqueTenantTheme: unique().on(table.tenantId),
+}));
+
 // Insert schemas for validation
 export const insertTenantSchema = createInsertSchema(tenants).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertUserSchema = createInsertSchema(users).omit({ id: true });
@@ -211,6 +238,7 @@ export const insertFaqSchema = createInsertSchema(faqs).omit({ id: true, views: 
 export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertRoadmapFeatureSchema = createInsertSchema(roadmapFeatures).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFeatureVoteSchema = createInsertSchema(featureVotes).omit({ id: true, createdAt: true });
+export const insertThemeSettingsSchema = createInsertSchema(themeSettings).omit({ id: true, createdAt: true, updatedAt: true });
 
 // Select schemas
 export const selectTenantSchema = createSelectSchema(tenants);
@@ -224,6 +252,7 @@ export const selectFaqSchema = createSelectSchema(faqs);
 export const selectTestimonialSchema = createSelectSchema(testimonials);
 export const selectRoadmapFeatureSchema = createSelectSchema(roadmapFeatures);
 export const selectFeatureVoteSchema = createSelectSchema(featureVotes);
+export const selectThemeSettingsSchema = createSelectSchema(themeSettings);
 
 // Types
 export type Tenant = typeof tenants.$inferSelect;
@@ -242,11 +271,13 @@ export type FAQ = typeof faqs.$inferSelect;
 export type Testimonial = typeof testimonials.$inferSelect;
 export type RoadmapFeature = typeof roadmapFeatures.$inferSelect;
 export type FeatureVote = typeof featureVotes.$inferSelect;
+export type ThemeSettings = typeof themeSettings.$inferSelect;
 
 export type InsertTenant = typeof tenants.$inferInsert;
 export type InsertUser = typeof users.$inferInsert;
 export type InsertOutlet = typeof outlets.$inferInsert;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+export type InsertThemeSettings = typeof themeSettings.$inferInsert;
 export type InsertBillingHistory = typeof billingHistory.$inferInsert;
 
 // Content management insert types

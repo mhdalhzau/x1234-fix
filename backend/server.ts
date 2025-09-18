@@ -12,6 +12,7 @@ import subscriptionRoutes from './routes/subscriptions';
 import analyticsRoutes from './routes/analytics';
 import contentRoutes from './routes/content';
 import webhookRoutes from './routes/webhooks';
+import themesRoutes from './routes/themes';
 
 // Load environment variables
 dotenv.config();
@@ -80,6 +81,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/webhooks', webhookRoutes);
+app.use('/api/themes', themesRoutes);
 
 // Serve static files in production
 if (NODE_ENV === 'production') {
