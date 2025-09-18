@@ -51,6 +51,11 @@ import SystemAdminPage from './pages/SystemAdminPage';
 import SystemLogsPage from './pages/SystemLogsPage';
 import PerformancePage from './pages/PerformancePage';
 
+// User Management sub-pages
+import RolesPermissionsPage from './pages/user-management/RolesPermissionsPage';
+import AuthenticationSettingsPage from './pages/user-management/AuthenticationSettingsPage';
+import TwoFactorAuthPage from './pages/user-management/TwoFactorAuthPage';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -330,7 +335,7 @@ function AppRoutes() {
         path="/user-management/roles"
         element={
           <ProtectedRoute>
-            <UserManagementPage />
+            <RolesPermissionsPage />
           </ProtectedRoute>
         }
       />
@@ -339,7 +344,7 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SuperAdminRoute>
-              <UserManagementPage />
+              <AuthenticationSettingsPage />
             </SuperAdminRoute>
           </ProtectedRoute>
         }
@@ -348,7 +353,7 @@ function AppRoutes() {
         path="/user-management/2fa"
         element={
           <ProtectedRoute>
-            <UserManagementPage />
+            <TwoFactorAuthPage />
           </ProtectedRoute>
         }
       />
