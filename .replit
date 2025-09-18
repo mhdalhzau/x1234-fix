@@ -1,7 +1,7 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
 [agent]
 expertMode = true
-integrations = ["javascript_stripe:1.0.0", "javascript_database:1.0.0", "replitmail:1.0.0"]
+integrations = ["javascript_stripe:1.0.0", "javascript_database:1.0.0", "replitmail:1.0.0", "javascript_sendgrid:1.0.0"]
 
 [nix]
 channel = "stable-25_05"
@@ -62,10 +62,6 @@ externalPort = 3000
 [[ports]]
 localPort = 39527
 externalPort = 3001
-
-[[ports]]
-localPort = 39723
-externalPort = 3002
 
 [[ports]]
 localPort = 41593
