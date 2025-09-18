@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Shield, UserCheck, UserX } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, Shield, UserCheck, UserX, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import axios from 'axios';
 
 interface User {
@@ -10,16 +10,30 @@ interface User {
   isActive: boolean;
   lastLoginAt: string | null;
   createdAt: string;
+  tenantId?: string;
+  tenantName?: string;
 }
+
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [expandedOwners, setExpandedOwners] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const roles = ['superadmin', 'tenant_owner', 'admin', 'staff'];
+
+  // Compute owners from users data with useMemo to auto-update
+  const owners = useMemo(() => {
+    return users
+      .filter((user: User) => user.role === 'tenant_owner')
+      .map((owner: User) => ({
+        ...owner,
+        staff: users.filter((user: User) => 
+          user.role === 'staff' && user.tenantId === owner.tenantId
+        )
+      }));
+  }, [users]);
 
   // Fetch users from API
   useEffect(() => {
@@ -47,7 +61,9 @@ export default function UserManagementPage() {
           role: user.role,
           isActive: user.isActive,
           lastLoginAt: user.lastLoginAt,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          tenantId: user.tenant_id,
+          tenantName: user.tenant_name
         }));
 
         setUsers(usersData);
@@ -62,16 +78,29 @@ export default function UserManagementPage() {
     fetchUsers();
   }, []);
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+  const filteredOwners = owners.filter(owner => {
+    const matchesSearch = owner.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         owner.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         owner.staff.some(staff => 
+                           staff.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           staff.email.toLowerCase().includes(searchTerm.toLowerCase())
+                         );
     const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'active' && user.isActive) ||
-                         (selectedStatus === 'inactive' && !user.isActive);
+                         (selectedStatus === 'active' && owner.isActive) ||
+                         (selectedStatus === 'inactive' && !owner.isActive);
     
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesStatus;
   });
+
+  const toggleOwnerExpansion = (ownerId: string) => {
+    const newExpanded = new Set(expandedOwners);
+    if (newExpanded.has(ownerId)) {
+      newExpanded.delete(ownerId);
+    } else {
+      newExpanded.add(ownerId);
+    }
+    setExpandedOwners(newExpanded);
+  };
 
   const handleCreateUser = () => {
     // TODO: Implement user creation modal
@@ -149,14 +178,6 @@ export default function UserManagementPage() {
     });
   };
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'manager': return 'bg-blue-100 text-blue-800';
-      case 'staff': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   if (isLoading) {
     return (
@@ -190,34 +211,19 @@ export default function UserManagementPage() {
 
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm border">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search owners and staff..."
                 className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value)}
-            >
-              <option value="all">All Roles</option>
-              {roles.map(role => (
-                <option key={role} value={role}>
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                </option>
-              ))}
-            </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -233,20 +239,20 @@ export default function UserManagementPage() {
           </div>
           <div className="flex items-end">
             <div className="text-sm text-gray-600">
-              {filteredUsers.length} of {users.length} users
+              {filteredOwners.length} owners • {filteredOwners.reduce((total, owner) => total + owner.staff.length, 0)} staff
             </div>
           </div>
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Owners and Staff Hierarchical List */}
       <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
+                  Business Owner & Staff
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
@@ -266,71 +272,163 @@ export default function UserManagementPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-primary-600 font-medium">
-                          {user.username.charAt(0).toUpperCase()}
+              {filteredOwners.map((owner) => (
+                <>
+                  {/* Owner Row */}
+                  <tr key={owner.id} className="hover:bg-gray-50 bg-blue-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => toggleOwnerExpansion(owner.id)}
+                          className="mr-2 p-1 rounded hover:bg-gray-200"
+                        >
+                          {expandedOwners.has(owner.id) ? (
+                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-gray-500" />
+                          )}
+                        </button>
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                          <span className="text-blue-600 font-medium">
+                            {owner.username.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 flex items-center">
+                            {owner.username}
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              <Users className="h-3 w-3 mr-1" />
+                              {owner.staff.length} staff
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500">{owner.email}</div>
+                          {owner.tenantName && (
+                            <div className="text-xs text-blue-600 font-medium">{owner.tenantName}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <Shield className="h-3 w-3 mr-1" />
+                        Business Owner
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {owner.isActive ? (
+                          <UserCheck className="h-4 w-4 text-green-500 mr-2" />
+                        ) : (
+                          <UserX className="h-4 w-4 text-red-500 mr-2" />
+                        )}
+                        <span className={`text-sm ${owner.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                          {owner.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.username}</div>
-                        <div className="text-sm text-gray-500">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {owner.lastLoginAt ? formatDate(owner.lastLoginAt) : 'Never'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(owner.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleEditUser(owner)}
+                          className="text-primary-600 hover:text-primary-900"
+                          title="Edit owner"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleUserStatus(owner.id)}
+                          className={`${owner.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                          title={owner.isActive ? 'Deactivate owner' : 'Activate owner'}
+                        >
+                          {owner.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(owner.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete owner"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                      <Shield className="h-3 w-3 mr-1" />
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {user.isActive ? (
-                        <UserCheck className="h-4 w-4 text-green-500 mr-2" />
-                      ) : (
-                        <UserX className="h-4 w-4 text-red-500 mr-2" />
-                      )}
-                      <span className={`text-sm ${user.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Never'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(user.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => handleEditUser(user)}
-                        className="text-primary-600 hover:text-primary-900"
-                        title="Edit user"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleToggleUserStatus(user.id)}
-                        className={`${user.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
-                        title={user.isActive ? 'Deactivate user' : 'Activate user'}
-                      >
-                        {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete user"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                  
+                  {/* Staff Rows (when expanded) */}
+                  {expandedOwners.has(owner.id) && owner.staff.map((staff) => (
+                    <tr key={staff.id} className="hover:bg-gray-50 bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-6 mr-2"></div> {/* Indentation for staff */}
+                          <div className="w-6 h-px bg-gray-300 mr-2"></div> {/* Visual connection line */}
+                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                            <span className="text-green-600 font-medium text-xs">
+                              {staff.username.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{staff.username}</div>
+                            <div className="text-sm text-gray-500">{staff.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          <Shield className="h-3 w-3 mr-1" />
+                          Staff
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {staff.isActive ? (
+                            <UserCheck className="h-4 w-4 text-green-500 mr-2" />
+                          ) : (
+                            <UserX className="h-4 w-4 text-red-500 mr-2" />
+                          )}
+                          <span className={`text-sm ${staff.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                            {staff.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {staff.lastLoginAt ? formatDate(staff.lastLoginAt) : 'Never'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(staff.createdAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleEditUser(staff)}
+                            className="text-primary-600 hover:text-primary-900"
+                            title="Edit staff"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleUserStatus(staff.id)}
+                            className={`${staff.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                            title={staff.isActive ? 'Deactivate staff' : 'Activate staff'}
+                          >
+                            {staff.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(staff.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete staff"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
               ))}
             </tbody>
           </table>
@@ -338,10 +436,10 @@ export default function UserManagementPage() {
       </div>
 
       {/* Empty State */}
-      {filteredUsers.length === 0 && (
+      {filteredOwners.length === 0 && (
         <div className="text-center py-12">
-          <Shield className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
+          <Users className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No business owners found</h3>
           <p className="mt-1 text-sm text-gray-500">
             Try adjusting your search or filter criteria.
           </p>
