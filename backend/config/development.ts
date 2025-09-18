@@ -4,7 +4,7 @@
 
 export const developmentConfig = {
   // Database Configuration
-  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:password@helium/heliumdb?sslmode=disable',
+  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:password@helium/neondb?sslmode=disable',
   
   // JWT Authentication (Dummy Keys for Development)
   JWT_SECRET: process.env.JWT_SECRET || 'd033c6cd1c40612e521cefe0c6e22541',
