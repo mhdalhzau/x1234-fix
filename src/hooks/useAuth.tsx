@@ -1,9 +1,8 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = window.location.hostname === 'localhost' 
-  ? 'http://localhost:8000' 
-  : `https://${window.location.hostname.replace('-00-', '-00-').replace('.pike.replit.dev', '-8000.pike.replit.dev')}`;
+// Use empty base URL to rely on Vite proxy for /api calls
+const API_BASE_URL = '';
 
 interface User {
   id: string;
@@ -40,7 +39,7 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Configure axios defaults
+// Configure axios defaults - empty base URL to use Vite proxy
 axios.defaults.baseURL = API_BASE_URL;
 
 // Request interceptor to add auth token
