@@ -46,6 +46,11 @@ import ChurnAnalysisPage from './pages/analytics/ChurnAnalysisPage';
 import SuperAdminRoute from './components/SuperAdminRoute';
 import UserManagementPage from './pages/UserManagementPage';
 
+// System Administration pages
+import SystemAdminPage from './pages/SystemAdminPage';
+import SystemLogsPage from './pages/SystemLogsPage';
+import PerformancePage from './pages/PerformancePage';
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -344,6 +349,38 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <UserManagementPage />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* System Administration routes - Superadmin only */}
+      <Route
+        path="/system-admin"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <SystemAdminPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/system-logs"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <SystemLogsPage />
+            </SuperAdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/performance"
+        element={
+          <ProtectedRoute>
+            <SuperAdminRoute>
+              <PerformancePage />
+            </SuperAdminRoute>
           </ProtectedRoute>
         }
       />
