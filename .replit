@@ -41,7 +41,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd backend && JWT_SECRET=\"d033c6cd1c40612e521cefe0c6e22541\" JWT_REFRESH_SECRET=\"2a9622040fcabb746cbe3bf60a9b2ec0\" STRIPE_SECRET_KEY=\"sk_test_51S8GRjFpdXOTnxbslFQlmh7M2g1igjHGrBYzz7f4fqgJ4NWhy0QMgccxWNw2gtIrfYFg8hZ6BQcQ4kuZ3CyCoGx200wgTzjDom\" NODE_ENV=development npm run dev"
+args = "cd backend && DATABASE_URL=\"postgresql://postgres:password@helium/neondb?sslmode=disable\" JWT_SECRET=\"d033c6cd1c40612e521cefe0c6e22541\" JWT_REFRESH_SECRET=\"2a9622040fcabb746cbe3bf60a9b2ec0\" STRIPE_SECRET_KEY=\"sk_test_51S8GRjFpdXOTnxbslFQlmh7M2g1igjHGrBYzz7f4fqgJ4NWhy0QMgccxWNw2gtIrfYFg8hZ6BQcQ4kuZ3CyCoGx200wgTzjDom\" NODE_ENV=development npm run dev"
 waitForPort = 8000
 
 [workflows.workflow.metadata]
@@ -54,10 +54,6 @@ externalPort = 80
 [[ports]]
 localPort = 8000
 externalPort = 8000
-
-[[ports]]
-localPort = 33137
-externalPort = 3002
 
 [[ports]]
 localPort = 37183
