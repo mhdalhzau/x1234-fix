@@ -587,7 +587,11 @@ This invitation was sent to {{email}}.`
 
 // Template rendering and sending functions
 export class EmailTemplateService {
-  constructor(private emailService = emailService) {}
+  private emailService: typeof emailService;
+  
+  constructor(emailServiceInstance?: typeof emailService) {
+    this.emailService = emailServiceInstance || emailService;
+  }
 
   async sendAuthEmail(templateName: keyof typeof authTemplates, to: string, data: TemplateData): Promise<boolean> {
     const template = authTemplates[templateName];
